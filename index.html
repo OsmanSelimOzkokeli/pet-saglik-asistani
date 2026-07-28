@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pet Sağlık Asistanı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F5F7F6;
+    --card: #FFFFFF;
+    --ink: #1F2E2C;
+    --ink-soft: #52625F;
+    --teal: #1F4B47;
+    --teal-soft: #E4ECEA;
+    --line: #DDE5E2;
+    --acil: #B8433A;
+    --acil-bg: #FBEAE8;
+    --yakinda: #B9791E;
+    --yakinda-bg: #FBF1E1;
+    --gozlemle: #3E7C74;
+    --gozlemle-bg: #E7F1EF;
+    --dusuk: #5B7A5E;
+    --dusuk-bg: #EDF3EC;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px 40px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+  }
+
+  header { margin-bottom: 20px; flex-shrink: 0; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--teal);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
+  .sub { color: var(--ink-soft); font-size: 14px; }
+
+  .gauge-bar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+  .gauge-bar.visible { display: flex; }
+
+  .gauge-track {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, var(--dusuk), var(--gozlemle), var(--yakinda), var(--acil));
+    position: relative;
+  }
+  .gauge-dot {
+    position: absolute;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--ink);
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1px var(--line);
+    transition: left 0.4s ease;
+  }
+  .gauge-label {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+
+  .setup-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .setup-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .setup-card label {
+    display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .setup-card input {
+    width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink);
+  }
+  .setup-card button {
+    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+  .setup-card button:hover { background: #163936; }
+
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 4px 2px 16px;
+  }
+
+  .bubble {
+    max-width: 78%;
+    padding: 12px 15px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .bubble.user {
+    align-self: flex-end;
+    background: var(--teal);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .bubble.assistant {
+    align-self: flex-start;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble.assistant.acil {
+    border-color: var(--acil);
+    background: var(--acil-bg);
+  }
+
+  .typing {
+    align-self: flex-start;
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding: 4px 6px;
+  }
+
+  .disclaimer {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    text-align: center;
+    padding: 8px 0 0;
+    flex-shrink: 0;
+  }
+
+  .input-bar {
+    display: none;
+    gap: 10px;
+    flex-shrink: 0;
+    margin-top: 10px;
+  }
+  .input-bar.visible { display: flex; }
+  .input-bar input {
+    flex: 1;
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--card);
+  }
+  .input-bar input:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+  .input-bar button {
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0 20px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .input-bar button:hover { background: #163936; }
+  .input-bar button:disabled { background: #9AAEAB; cursor: wait; }
+
+  .error-box {
+    display: none;
+    background: var(--acil-bg);
+    color: var(--acil);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+  .error-box.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Pet Sağlık Asistanı</div>
+    <h1>Merak ettiğini anlat, birlikte konuşalım.</h1>
+    <p class="sub">Bu bir sohbet asistanıdır, veteriner muayenesinin yerini tutmaz.</p>
+  </header>
+
+  <div class="gauge-bar" id="gauge-bar">
+    <span class="gauge-label" id="gauge-label"></span>
+    <div class="gauge-track"><div class="gauge-dot" id="gauge-dot" style="left: 0%;"></div></div>
+  </div>
+
+  <div class="setup-card" id="setup-card">
+    <div class="row">
+      <div>
+        <label for="tur">Hayvan türü</label>
+        <input type="text" id="tur" placeholder="köpek, kedi, tavşan...">
+      </div>
+      <div>
+        <label for="yas">Yaş (opsiyonel)</label>
+        <input type="text" id="yas" placeholder="3 yaşında">
+      </div>
+    </div>
+    <button id="start-btn">Sohbete başla</button>
+  </div>
+
+  <div class="chat-area" id="chat-area"></div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <div class="input-bar" id="input-bar">
+    <input type="text" id="message-input" placeholder="Mesajını yaz...">
+    <button id="send-btn">Gönder</button>
+  </div>
+
+  <div class="disclaimer">Bu araç tanı koymaz. Acil durumda en yakın veteriner kliniğine gidin.</div>
+</div>
+
+<script>
+const API_URL = "http://localhost:8000/chat";
+
+const urgencyConfig = {
+  "ACİL":         { pct: 92,  label: "ACİL",           color: "var(--acil)",     bg: "var(--acil-bg)" },
+  "YAKINDA_VET":  { pct: 64,  label: "YAKINDA VET",    color: "var(--yakinda)",  bg: "var(--yakinda-bg)" },
+  "GÖZLEMLE":     { pct: 36,  label: "GÖZLEMLE",       color: "var(--gozlemle)", bg: "var(--gozlemle-bg)" },
+  "DÜŞÜK_ENDİŞE": { pct: 8,   label: "DÜŞÜK ENDİŞE",   color: "var(--dusuk)",    bg: "var(--dusuk-bg)" },
+};
+
+let tur = "";
+let yas = "";
+let gecmis = [];
+
+const setupCard = document.getElementById("setup-card");
+const chatArea = document.getElementById("chat-area");
+const inputBar = document.getElementById("input-bar");
+const messageInput = document.getElementById("message-input");
+const sendBtn = document.getElementById("send-btn");
+const errorBox = document.getElementById("error-box");
+const gaugeBar = document.getElementById("gauge-bar");
+const gaugeDot = document.getElementById("gauge-dot");
+const gaugeLabel = document.getElementById("gauge-label");
+
+document.getElementById("start-btn").addEventListener("click", () => {
+  tur = document.getElementById("tur").value.trim();
+  yas = document.getElementById("yas").value.trim();
+
+  if (!tur) {
+    alert("Lütfen hayvan türünü yaz (köpek, kedi, vb.)");
+    return;
+  }
+
+  setupCard.style.display = "none";
+  inputBar.classList.add("visible");
+  addBubble("assistant", `Merhaba! ${tur}in için ne oldu, neyi fark ettin?`);
+  messageInput.focus();
+});
+
+sendBtn.addEventListener("click", sendMessage);
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+function addBubble(rol, text, aciliyet) {
+  const div = document.createElement("div");
+  div.className = "bubble " + (rol === "kullanici" ? "user" : "assistant");
+  if (aciliyet === "ACİL") div.classList.add("acil");
+  div.textContent = text;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return div;
+}
+
+function setTyping(show) {
+  let el = document.getElementById("typing-indicator");
+  if (show) {
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "typing-indicator";
+      el.className = "typing";
+      el.textContent = "Asistan yazıyor...";
+      chatArea.appendChild(el);
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+  } else if (el) {
+    el.remove();
+  }
+}
+
+async function sendMessage() {
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  addBubble("kullanici", text);
+  messageInput.value = "";
+  messageInput.disabled = true;
+  sendBtn.disabled = true;
+  errorBox.classList.remove("visible");
+  setTyping(true);
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tur: tur,
+        yas: yas || null,
+        gecmis: gecmis,
+        yeni_mesaj: text,
+        fotograf_base64: null
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Sunucu hatası (${res.status})`);
+    }
+
+    const data = await res.json();
+
+    setTyping(false);
+    addBubble("asistan", data.yanit, data.aciliyet);
+    updateGauge(data.aciliyet);
+
+    gecmis.push({ rol: "kullanici", icerik: text });
+    gecmis.push({ rol: "asistan", icerik: data.yanit });
+
+  } catch (err) {
+    setTyping(false);
+    errorBox.textContent = "Bir sorun oluştu: " + err.message;
+    errorBox.classList.add("visible");
+  } finally {
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    messageInput.focus();
+  }
+}
+
+function updateGauge(aciliyet) {
+  const cfg = urgencyConfig[aciliyet] || urgencyConfig["GÖZLEMLE"];
+  gaugeBar.classList.add("visible");
+  gaugeDot.style.left = cfg.pct + "%";
+  gaugeLabel.textContent = cfg.label;
+  gaugeLabel.style.color = cfg.color;
+  gaugeLabel.style.background = cfg.bg;
+}
+</script>
+</body>
+</html>
