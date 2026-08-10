@@ -214,6 +214,42 @@
     margin-top: 10px;
   }
   .error-box.visible { display: block; }
+
+  .photo-preview {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .photo-preview.visible { display: flex; }
+  .photo-preview img {
+    width: 40px; height: 40px; object-fit: cover; border-radius: 6px;
+  }
+  .photo-preview button {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--acil);
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  #photo-btn {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    width: 44px;
+    flex-shrink: 0;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  #photo-btn:hover { background: var(--teal-soft); }
 </style>
 </head>
 <body>
@@ -248,7 +284,11 @@
 
   <div class="error-box" id="error-box"></div>
 
+  <div class="photo-preview" id="photo-preview"></div>
+
   <div class="input-bar" id="input-bar">
+    <button type="button" id="photo-btn" title="Fotoğraf ekle">📷</button>
+    <input type="file" id="photo-input" accept="image/*" style="display:none;">
     <input type="text" id="message-input" placeholder="Mesajını yaz...">
     <button id="send-btn">Gönder</button>
   </div>
@@ -269,6 +309,7 @@ const urgencyConfig = {
 let tur = "";
 let yas = "";
 let gecmis = [];
+let secilenFotografBase64 = null;
 
 const setupCard = document.getElementById("setup-card");
 const chatArea = document.getElementById("chat-area");
@@ -279,6 +320,40 @@ const errorBox = document.getElementById("error-box");
 const gaugeBar = document.getElementById("gauge-bar");
 const gaugeDot = document.getElementById("gauge-dot");
 const gaugeLabel = document.getElementById("gauge-label");
+const photoBtn = document.getElementById("photo-btn");
+const photoInput = document.getElementById("photo-input");
+const photoPreview = document.getElementById("photo-preview");
+
+photoBtn.addEventListener("click", () => photoInput.click());
+
+photoInput.addEventListener("change", () => {
+  const file = photoInput.files[0];
+  if (!file) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("Fotoğraf çok büyük (max 5MB). Daha küçük bir dosya seç.");
+    photoInput.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    secilenFotografBase64 = reader.result.split(",")[1];
+    photoPreview.innerHTML = `
+      <img src="${reader.result}" alt="Seçilen fotoğraf">
+      <span>Fotoğraf eklendi, mesajınla birlikte gönderilecek</span>
+      <button type="button" id="remove-photo-btn">Kaldır</button>
+    `;
+    photoPreview.classList.add("visible");
+    document.getElementById("remove-photo-btn").addEventListener("click", () => {
+      secilenFotografBase64 = null;
+      photoInput.value = "";
+      photoPreview.classList.remove("visible");
+      photoPreview.innerHTML = "";
+    });
+  };
+  reader.readAsDataURL(file);
+});
 
 document.getElementById("start-btn").addEventListener("click", () => {
   tur = document.getElementById("tur").value.trim();
@@ -330,12 +405,14 @@ async function sendMessage() {
   const text = messageInput.value.trim();
   if (!text) return;
 
-  addBubble("kullanici", text);
+  addBubble("kullanici", text + (secilenFotografBase64 ? " 📷" : ""));
   messageInput.value = "";
   messageInput.disabled = true;
   sendBtn.disabled = true;
   errorBox.classList.remove("visible");
   setTyping(true);
+
+  const fotografGonderilecek = secilenFotografBase64;
 
   try {
     const res = await fetch(API_URL, {
@@ -346,7 +423,7 @@ async function sendMessage() {
         yas: yas || null,
         gecmis: gecmis,
         yeni_mesaj: text,
-        fotograf_base64: null
+        fotograf_base64: fotografGonderilecek
       })
     });
 
@@ -363,6 +440,11 @@ async function sendMessage() {
 
     gecmis.push({ rol: "kullanici", icerik: text });
     gecmis.push({ rol: "asistan", icerik: data.yanit });
+
+    secilenFotografBase64 = null;
+    photoInput.value = "";
+    photoPreview.classList.remove("visible");
+    photoPreview.innerHTML = "";
 
   } catch (err) {
     setTyping(false);
