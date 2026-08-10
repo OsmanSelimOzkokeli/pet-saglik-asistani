@@ -3,27 +3,19 @@ Pet Sağlık Asistanı - Semptom & Aciliyet Triyaj + Sohbet Servisi
 ---------------------------------------------------------
 Sahip, hayvanının semptomlarını (metin ve isteğe bağlı fotoğrafla) anlatır,
 AI ile sohbet ederek aciliyet seviyesi ve genel yönlendirme alır.
-Ayrıca Google Places API ile yakındaki veteriner/petshop önerisi sunar.
-
-ÖNEMLİ TASARIM KARARI:
-Kritik/acil semptomlar sabit kodlanmış bir anahtar kelime katmanıyla tespit
-edilir ve AI'nın yorumundan BAĞIMSIZ olarak her zaman "ACİL" seviyesine
-zorlanır.
+Ayrıca Google Places API ile yakındaki veteriner/petshop önerisi ve
+Supabase ile sahiplendirme ilan sistemi sunar.
 
 Çalıştırma (mock mod, para harcamadan):
     pip install fastapi uvicorn openai --break-system-packages
     set MOCK_MODE=1
     uvicorn app:app --port 8000
-
-Çalıştırma (gerçek OpenAI ile):
-    set OPENAI_API_KEY=sk-...
-    uvicorn app:app --port 8000
 """
 
 import base64
 import os
-import random
 import json
+import random
 from enum import Enum
 from typing import Optional
 
@@ -104,10 +96,6 @@ class ChatResponse(BaseModel):
         "Kesin teşhis ve tedavi için mutlaka bir veteriner hekime başvurun."
     )
 
-
-# ---------------------------------------------------------------------------
-# OpenAI entegrasyonu (sohbet modu)
-# ---------------------------------------------------------------------------
 
 CHAT_SYSTEM_PROMPT = """Sen bir evcil hayvan sağlığı ön-değerlendirme asistanısın. Sahibiyle
 doğal, sıcak ve sakin bir sohbet dilinde konuşuyorsun — form doldurtmuyorsun,
@@ -299,6 +287,84 @@ def call_google_places(req: NearbyRequest) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Aşama 3: Sahiplendirme destek sayfası (Supabase)
+# ---------------------------------------------------------------------------
+
+class SahiplendirmeIlan(BaseModel):
+    hayvan_adi: str
+    tur: str
+    yas: Optional[str] = None
+    cinsiyet: Optional[str] = None
+    aciklama: str
+    fotograf_url: Optional[str] = None
+    konum: str
+    iletisim: str
+
+
+def supabase_headers() -> dict:
+    key = os.environ.get("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E")
+    return {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+
+def supabase_url() -> str:
+    url = os.environ.get("SUPABASE_URL", "https://qkvxlnlsdzmcozwkvbgf.supabase.co")
+    return url.rstrip("/")
+
+
+@app.post("/sahiplendirme")
+def sahiplendirme_ekle(ilan: SahiplendirmeIlan):
+    import urllib.request
+    import urllib.error
+
+    endpoint = f"{supabase_url()}/rest/v1/sahiplendirme_ilanlari"
+    body = json.dumps(ilan.model_dump()).encode()
+
+    req = urllib.request.Request(endpoint, data=body, headers=supabase_headers(), method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            response.read()  # return=minimal ile boş dönüyor, sadece başarı kontrolü
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()
+        raise HTTPException(status_code=502, detail=f"Supabase hatası: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Supabase bağlantı hatası: {e}")
+
+    return {"basarili": True, "ilan": ilan.model_dump(),
+            "mesaj": "İlanınız alındı, onaylandıktan sonra listede görünecek."}
+
+
+@app.get("/sahiplendirme")
+def sahiplendirme_listele():
+    import urllib.request
+    import urllib.error
+    import urllib.parse
+
+    params = urllib.parse.urlencode({
+        "durum": "eq.onaylı",
+        "order": "created_at.desc",
+        "select": "*",
+    })
+    endpoint = f"{supabase_url()}/rest/v1/sahiplendirme_ilanlari?{params}"
+
+    req = urllib.request.Request(endpoint, headers=supabase_headers(), method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()
+        raise HTTPException(status_code=502, detail=f"Supabase hatası: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Supabase bağlantı hatası: {e}")
+
+    return {"ilanlar": data}
+
+
+# ---------------------------------------------------------------------------
 # Endpoint'ler
 # ---------------------------------------------------------------------------
 
@@ -355,3 +421,11 @@ def rehber():
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "nearby.html bulunamadı"}
+
+
+@app.get("/sahiplendir")
+def sahiplendir_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "sahiplendirme.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "sahiplendirme.html bulunamadı"}

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sahiplendirme Destek Sayfası</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F5F7F6;
+    --card: #FFFFFF;
+    --ink: #1F2E2C;
+    --ink-soft: #52625F;
+    --teal: #1F4B47;
+    --teal-soft: #E4ECEA;
+    --line: #DDE5E2;
+    --acil: #B8433A;
+    --acil-bg: #FBEAE8;
+    --gozlemle: #3E7C74;
+    --gozlemle-bg: #E7F1EF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'Inter', sans-serif; min-height: 100vh;
+    display: flex; justify-content: center; padding: 40px 20px 60px;
+  }
+  .wrap { width: 100%; max-width: 720px; }
+  .back-link {
+    display: inline-block; font-size: 13px; color: var(--teal); text-decoration: none;
+    margin-bottom: 16px; font-weight: 600;
+  }
+  .eyebrow {
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--teal); font-weight: 600; margin-bottom: 8px;
+  }
+  h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 24px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tab-btn {
+    padding: 10px 18px; border-radius: 100px; border: 1px solid var(--line);
+    background: var(--card); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .tab-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .form-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+  input, textarea {
+    width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink);
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  .field { margin-bottom: 14px; }
+  .submit-btn {
+    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 6px;
+  }
+  .submit-btn:hover { background: #163936; }
+  .submit-btn:disabled { background: #9AAEAB; cursor: wait; }
+
+  .success-box {
+    display: none; background: var(--gozlemle-bg); color: var(--gozlemle);
+    border-radius: 8px; padding: 14px; font-size: 13.5px; margin-top: 14px; line-height: 1.5;
+  }
+  .success-box.visible { display: block; }
+  .error-box {
+    display: none; background: var(--acil-bg); color: var(--acil);
+    border-radius: 8px; padding: 12px; font-size: 13px; margin-top: 14px;
+  }
+  .error-box.visible { display: block; }
+
+  .listing-grid { display: flex; flex-direction: column; gap: 12px; }
+  .listing-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 20px; display: flex; gap: 16px;
+  }
+  .listing-photo {
+    width: 84px; height: 84px; border-radius: 10px; object-fit: cover;
+    background: var(--teal-soft); flex-shrink: 0;
+  }
+  .listing-info { flex: 1; }
+  .listing-name { font-weight: 600; font-size: 16px; margin-bottom: 2px; }
+  .listing-meta { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .listing-desc { font-size: 13.5px; color: var(--ink); line-height: 1.5; margin-bottom: 8px; }
+  .listing-contact { font-size: 12.5px; color: var(--teal); font-weight: 600; }
+
+  .empty-state { text-align: center; color: var(--ink-soft); font-size: 14px; padding: 30px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/" class="back-link">← Sohbete geri dön</a>
+
+  <div class="eyebrow">Sahiplendirme</div>
+  <h1>Sahiplendirme destek sayfası</h1>
+  <p class="sub">Sahiplendirilecek bir hayvan mı var, yoksa sahiplenmek mi istiyorsun?</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-listele" data-panel="panel-listele">📋 İlanları Gör</button>
+    <button class="tab-btn" id="tab-ekle" data-panel="panel-ekle">➕ İlan Ver</button>
+  </div>
+
+  <div class="panel active" id="panel-listele">
+    <div class="listing-grid" id="listing-grid">
+      <div class="empty-state">Yükleniyor...</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-ekle">
+    <div class="form-card">
+      <div class="row">
+        <div class="field">
+          <label for="hayvan_adi">Hayvanın adı</label>
+          <input type="text" id="hayvan_adi" placeholder="Örn: Boncuk">
+        </div>
+        <div class="field">
+          <label for="tur">Tür</label>
+          <input type="text" id="tur" placeholder="köpek, kedi...">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="yas">Yaş (opsiyonel)</label>
+          <input type="text" id="yas" placeholder="1 yaşında">
+        </div>
+        <div class="field">
+          <label for="cinsiyet">Cinsiyet (opsiyonel)</label>
+          <input type="text" id="cinsiyet" placeholder="dişi / erkek">
+        </div>
+      </div>
+      <div class="field">
+        <label for="aciklama">Açıklama</label>
+        <textarea id="aciklama" placeholder="Karakteri, sağlık durumu, neden sahiplendirildiği..."></textarea>
+      </div>
+      <div class="field">
+        <label for="fotograf_url">Fotoğraf linki (opsiyonel)</label>
+        <input type="text" id="fotograf_url" placeholder="https://...">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="konum">Konum</label>
+          <input type="text" id="konum" placeholder="Afyonkarahisar">
+        </div>
+        <div class="field">
+          <label for="iletisim">İletişim (telefon/whatsapp)</label>
+          <input type="text" id="iletisim" placeholder="05xx xxx xx xx">
+        </div>
+      </div>
+      <button class="submit-btn" id="submit-btn">İlanı Gönder</button>
+      <div class="success-box" id="success-box"></div>
+      <div class="error-box" id="error-box"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = "http://localhost:8000";
+
+const tabButtons = document.querySelectorAll(".tab-btn");
+const panels = document.querySelectorAll(".panel");
+
+tabButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    tabButtons.forEach(b => b.classList.remove("active"));
+    panels.forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.panel).classList.add("active");
+    if (btn.dataset.panel === "panel-listele") loadListings();
+  });
+});
+
+async function loadListings() {
+  const grid = document.getElementById("listing-grid");
+  grid.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/sahiplendirme`);
+    if (!res.ok) throw new Error(`Sunucu hatası (${res.status})`);
+    const data = await res.json();
+
+    if (!data.ilanlar || data.ilanlar.length === 0) {
+      grid.innerHTML = '<div class="empty-state">Henüz onaylı ilan yok. İlk ilanı sen ver!</div>';
+      return;
+    }
+
+    grid.innerHTML = "";
+    data.ilanlar.forEach(ilan => {
+      const card = document.createElement("div");
+      card.className = "listing-card";
+      const photoHtml = ilan.fotograf_url
+        ? `<img class="listing-photo" src="${ilan.fotograf_url}" alt="${ilan.hayvan_adi}">`
+        : `<div class="listing-photo"></div>`;
+
+      card.innerHTML = `
+        ${photoHtml}
+        <div class="listing-info">
+          <div class="listing-name">${ilan.hayvan_adi} · ${ilan.tur}</div>
+          <div class="listing-meta">${[ilan.yas, ilan.cinsiyet, ilan.konum].filter(Boolean).join(" · ")}</div>
+          <div class="listing-desc">${ilan.aciklama}</div>
+          <div class="listing-contact">📞 ${ilan.iletisim}</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+  } catch (err) {
+    grid.innerHTML = `<div class="empty-state">Yüklenemedi: ${err.message}</div>`;
+  }
+}
+
+document.getElementById("submit-btn").addEventListener("click", async () => {
+  const payload = {
+    hayvan_adi: document.getElementById("hayvan_adi").value.trim(),
+    tur: document.getElementById("tur").value.trim(),
+    yas: document.getElementById("yas").value.trim() || null,
+    cinsiyet: document.getElementById("cinsiyet").value.trim() || null,
+    aciklama: document.getElementById("aciklama").value.trim(),
+    fotograf_url: document.getElementById("fotograf_url").value.trim() || null,
+    konum: document.getElementById("konum").value.trim(),
+    iletisim: document.getElementById("iletisim").value.trim(),
+  };
+
+  if (!payload.hayvan_adi || !payload.tur || !payload.aciklama || !payload.konum || !payload.iletisim) {
+    alert("Lütfen zorunlu alanları doldur: hayvan adı, tür, açıklama, konum, iletişim.");
+    return;
+  }
+
+  const btn = document.getElementById("submit-btn");
+  const successBox = document.getElementById("success-box");
+  const errorBox = document.getElementById("error-box");
+
+  btn.disabled = true;
+  btn.textContent = "Gönderiliyor...";
+  successBox.classList.remove("visible");
+  errorBox.classList.remove("visible");
+
+  try {
+    const res = await fetch(`${API_BASE}/sahiplendirme`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Sunucu hatası (${res.status})`);
+    }
+
+    const data = await res.json();
+    successBox.textContent = data.mesaj || "İlanınız alındı, onaylandıktan sonra listede görünecek.";
+    successBox.classList.add("visible");
+
+    document.querySelectorAll("#panel-ekle input, #panel-ekle textarea").forEach(el => el.value = "");
+
+  } catch (err) {
+    errorBox.textContent = "Bir sorun oluştu: " + err.message;
+    errorBox.classList.add("visible");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "İlanı Gönder";
+  }
+});
+
+loadListings();
+</script>
+</body>
+</html>
