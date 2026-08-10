@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Veteriner & Petshop Rehberi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F5F7F6;
+    --card: #FFFFFF;
+    --ink: #1F2E2C;
+    --ink-soft: #52625F;
+    --teal: #1F4B47;
+    --teal-soft: #E4ECEA;
+    --line: #DDE5E2;
+    --gozlemle: #3E7C74;
+    --gozlemle-bg: #E7F1EF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px 60px;
+  }
+  .wrap { width: 100%; max-width: 680px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--teal); font-weight: 600; margin-bottom: 8px;
+  }
+  h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 24px; }
+  .back-link {
+    display: inline-block; font-size: 13px; color: var(--teal); text-decoration: none;
+    margin-bottom: 16px; font-weight: 600;
+  }
+  .search-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .search-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .search-row input {
+    flex: 1; font-family: inherit; font-size: 15px; padding: 11px 13px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+  }
+  .toggle-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .toggle-btn {
+    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--paper); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .toggle-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .search-card button.search-submit {
+    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+  .search-card button.search-submit:hover { background: #163936; }
+  .search-card button.search-submit:disabled { background: #9AAEAB; cursor: wait; }
+
+  .source-note {
+    font-size: 11.5px; color: var(--ink-soft); text-align: center; margin-top: 8px;
+  }
+
+  .results { display: flex; flex-direction: column; gap: 10px; }
+  .place-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .place-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .place-addr { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
+  .place-meta { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+  .place-rating { color: var(--teal); font-weight: 600; }
+  .place-open { padding: 2px 8px; border-radius: 100px; background: var(--gozlemle-bg); color: var(--gozlemle); font-weight: 600; }
+  .place-link { margin-left: auto; color: var(--teal); text-decoration: none; font-weight: 600; }
+
+  .empty-state { text-align: center; color: var(--ink-soft); font-size: 14px; padding: 30px 0; }
+  .error-box {
+    display: none; background: #FBEAE8; color: #B8433A; border-radius: 8px;
+    padding: 12px; font-size: 13px; margin-bottom: 16px;
+  }
+  .error-box.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/" class="back-link">← Sohbete geri dön</a>
+
+  <div class="eyebrow">Rehber</div>
+  <h1>Yakınında veteriner ve petshop bul</h1>
+  <p class="sub">Şehir/ilçe yaz, listeye bak.</p>
+
+  <div class="error-box" id="error-box"></div>
+
+  <div class="search-card">
+    <div class="toggle-row">
+      <button type="button" class="toggle-btn active" id="btn-vet" data-tur="veteriner">🏥 Veteriner</button>
+      <button type="button" class="toggle-btn" id="btn-pet" data-tur="petshop">🛍️ Petshop</button>
+    </div>
+    <div class="search-row">
+      <input type="text" id="konum-input" placeholder="Şehir/ilçe (örn: Afyonkarahisar)">
+    </div>
+    <button class="search-submit" id="search-btn">Ara</button>
+    <div class="source-note" id="source-note"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="empty-state">Aramak için yukarıya bir konum yaz.</div>
+  </div>
+</div>
+
+<script>
+const API_URL = "http://localhost:8000/nearby";
+let seciliTur = "veteriner";
+
+const btnVet = document.getElementById("btn-vet");
+const btnPet = document.getElementById("btn-pet");
+const konumInput = document.getElementById("konum-input");
+const searchBtn = document.getElementById("search-btn");
+const resultsDiv = document.getElementById("results");
+const errorBox = document.getElementById("error-box");
+const sourceNote = document.getElementById("source-note");
+
+btnVet.addEventListener("click", () => selectTur("veteriner"));
+btnPet.addEventListener("click", () => selectTur("petshop"));
+
+function selectTur(tur) {
+  seciliTur = tur;
+  btnVet.classList.toggle("active", tur === "veteriner");
+  btnPet.classList.toggle("active", tur === "petshop");
+}
+
+konumInput.addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+searchBtn.addEventListener("click", search);
+
+async function search() {
+  const konum = konumInput.value.trim();
+  if (!konum) {
+    alert("Lütfen bir şehir/ilçe yaz.");
+    return;
+  }
+
+  searchBtn.disabled = true;
+  searchBtn.textContent = "Aranıyor...";
+  errorBox.classList.remove("visible");
+  resultsDiv.innerHTML = "";
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ konum: konum, tur: seciliTur })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Sunucu hatası (${res.status})`);
+    }
+
+    const data = await res.json();
+    renderResults(data);
+
+  } catch (err) {
+    errorBox.textContent = "Bir sorun oluştu: " + err.message;
+    errorBox.classList.add("visible");
+    resultsDiv.innerHTML = '<div class="empty-state">Sonuç gösterilemedi.</div>';
+  } finally {
+    searchBtn.disabled = false;
+    searchBtn.textContent = "Ara";
+  }
+}
+
+function renderResults(data) {
+  sourceNote.textContent = data.kaynak === "mock"
+    ? "Şu an sahte (mock) veri gösteriliyor — gerçek sonuçlar için GOOGLE_PLACES_API_KEY gerekir."
+    : "Google Places verisi";
+
+  if (!data.sonuclar || data.sonuclar.length === 0) {
+    resultsDiv.innerHTML = '<div class="empty-state">Sonuç bulunamadı, farklı bir konum dene.</div>';
+    return;
+  }
+
+  resultsDiv.innerHTML = "";
+  data.sonuclar.forEach(place => {
+    const card = document.createElement("div");
+    card.className = "place-card";
+
+    let metaHtml = "";
+    if (place.puan) {
+      metaHtml += `<span class="place-rating">★ ${place.puan}</span>`;
+      if (place.puan_sayisi) metaHtml += `<span>(${place.puan_sayisi} değerlendirme)</span>`;
+    }
+    if (place.acik_mi === true) metaHtml += `<span class="place-open">Açık</span>`;
+    if (place.acik_mi === false) metaHtml += `<span class="place-open" style="background:#FBEAE8;color:#B8433A;">Kapalı</span>`;
+    if (place.harita_linki) metaHtml += `<a href="${place.harita_linki}" target="_blank" class="place-link">Haritada gör →</a>`;
+
+    card.innerHTML = `
+      <div class="place-name">${place.isim}</div>
+      <div class="place-addr">${place.adres}</div>
+      <div class="place-meta">${metaHtml}</div>
+    `;
+    resultsDiv.appendChild(card);
+  });
+}
+</script>
+</body>
+</html>
