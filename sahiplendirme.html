@@ -63,9 +63,25 @@
 
   .listing-grid { display: flex; flex-direction: column; gap: 12px; }
 
-  .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  .filter-chip { padding: 7px 15px; border-radius: 100px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+  .filter-panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  .filter-group { margin-bottom: 12px; }
+  .filter-group:last-child { margin-bottom: 0; }
+  .filter-group-label { font-size: 12px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 8px; }
+  .filter-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .filter-chip { padding: 7px 15px; border-radius: 100px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
   .filter-chip.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .filter-konum-input {
+    width: 100%; font-family: inherit; font-size: 14px; padding: 9px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink);
+  }
+  .filter-konum-input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+
+  .listing-type-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px;
+    margin-bottom: 6px;
+  }
+  .listing-type-badge.sahiplendirme { background: var(--teal-soft); color: var(--teal); }
+  .listing-type-badge.ciftlestirme { background: var(--green-soft); color: #3F5A22; }
   .listing-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; gap: 16px; }
   .listing-photo { width: 88px; height: 88px; border-radius: 12px; object-fit: cover; background: var(--teal-soft); flex-shrink: 0; }
   .listing-info { flex: 1; }
@@ -108,11 +124,39 @@
   </div>
 
   <div class="panel active" id="panel-listele">
-    <div class="filter-row" id="filter-row">
-      <button class="filter-chip active" data-tur="tumu">Tümü</button>
-      <button class="filter-chip" data-tur="köpek">🐶 Köpek</button>
-      <button class="filter-chip" data-tur="kedi">🐱 Kedi</button>
-      <button class="filter-chip" data-tur="diger">Diğer</button>
+    <div class="filter-panel">
+      <div class="filter-group">
+        <div class="filter-group-label">İlan türü</div>
+        <div class="filter-row" id="filter-ilan-turu">
+          <button class="filter-chip active" data-val="tumu">Tümü</button>
+          <button class="filter-chip" data-val="sahiplendirme">🏠 Sahiplendirme</button>
+          <button class="filter-chip" data-val="çiftleştirme">💞 Çiftleştirme</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-group-label">Hayvan türü</div>
+        <div class="filter-row" id="filter-hayvan-turu">
+          <button class="filter-chip active" data-val="tumu">Tümü</button>
+          <button class="filter-chip" data-val="köpek">🐶 Köpek</button>
+          <button class="filter-chip" data-val="kedi">🐱 Kedi</button>
+          <button class="filter-chip" data-val="diger">Diğer</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-group-label">Yaş</div>
+        <div class="filter-row" id="filter-yas">
+          <button class="filter-chip active" data-val="tumu">Tümü</button>
+          <button class="filter-chip" data-val="0-6 ay">0-6 ay</button>
+          <button class="filter-chip" data-val="6 ay - 1 yaş">6 ay - 1 yaş</button>
+          <button class="filter-chip" data-val="1-3 yaş">1-3 yaş</button>
+          <button class="filter-chip" data-val="3-5 yaş">3-5 yaş</button>
+          <button class="filter-chip" data-val="5+ yaş">5+ yaş</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-group-label">Konum</div>
+        <input type="text" class="filter-konum-input" id="filter-konum" placeholder="Şehir/ilçe ara (örn: Afyon)">
+      </div>
     </div>
     <div class="listing-grid" id="listing-grid"><div class="empty-state">Yükleniyor...</div></div>
   </div>
@@ -129,7 +173,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentSession = null;
 let allListings = [];
-let activeFilter = "tumu";
+let activeFilters = { ilanTuru: "tumu", tur: "tumu", yas: "tumu", konum: "" };
 
 async function initSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
@@ -153,12 +197,29 @@ function renderEkleArea() {
 
   area.innerHTML = `
     <div class="form-card">
+      <div class="field">
+        <label>İlan türü</label>
+        <div class="filter-row" id="ekle-ilan-turu">
+          <button type="button" class="filter-chip active" data-val="sahiplendirme">🏠 Sahiplendirme</button>
+          <button type="button" class="filter-chip" data-val="çiftleştirme">💞 Çiftleştirme</button>
+        </div>
+      </div>
       <div class="row">
         <div class="field"><label for="hayvan_adi">Hayvanın adı</label><input type="text" id="hayvan_adi" placeholder="Örn: Boncuk"></div>
         <div class="field"><label for="tur">Tür</label><input type="text" id="tur" placeholder="köpek, kedi..."></div>
       </div>
       <div class="row">
-        <div class="field"><label for="yas">Yaş (opsiyonel)</label><input type="text" id="yas" placeholder="1 yaşında"></div>
+        <div class="field">
+          <label for="yas">Yaş (opsiyonel)</label>
+          <select id="yas">
+            <option value="">Seçilmedi</option>
+            <option value="0-6 ay">0-6 ay</option>
+            <option value="6 ay - 1 yaş">6 ay - 1 yaş</option>
+            <option value="1-3 yaş">1-3 yaş</option>
+            <option value="3-5 yaş">3-5 yaş</option>
+            <option value="5+ yaş">5+ yaş</option>
+          </select>
+        </div>
         <div class="field"><label for="cinsiyet">Cinsiyet (opsiyonel)</label><input type="text" id="cinsiyet" placeholder="dişi / erkek"></div>
       </div>
       <div class="field"><label for="aciklama">Açıklama</label><textarea id="aciklama" placeholder="Karakteri, sağlık durumu, neden sahiplendirildiği..."></textarea></div>
@@ -172,20 +233,30 @@ function renderEkleArea() {
       <div class="error-box" id="error-box"></div>
     </div>`;
 
-  document.getElementById("submit-btn").addEventListener("click", submitIlan);
+  let seciliIlanTuru = "sahiplendirme";
+  document.querySelectorAll("#ekle-ilan-turu .filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#ekle-ilan-turu .filter-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      seciliIlanTuru = chip.dataset.val;
+    });
+  });
+
+  document.getElementById("submit-btn").addEventListener("click", () => submitIlan(seciliIlanTuru));
 }
 
-async function submitIlan() {
+async function submitIlan(ilanTuru) {
   const payload = {
     hayvan_adi: document.getElementById("hayvan_adi").value.trim(),
     tur: document.getElementById("tur").value.trim(),
-    yas: document.getElementById("yas").value.trim() || null,
+    yas: document.getElementById("yas").value || null,
     cinsiyet: document.getElementById("cinsiyet").value.trim() || null,
     aciklama: document.getElementById("aciklama").value.trim(),
     fotograf_url: document.getElementById("fotograf_url").value.trim() || null,
     konum: document.getElementById("konum").value.trim(),
     iletisim: document.getElementById("iletisim").value.trim(),
     ilan_sahibi_id: currentSession.user.id,
+    ilan_turu: ilanTuru,
     durum: "beklemede",
   };
 
@@ -228,19 +299,32 @@ function renderFilteredListings() {
   const grid = document.getElementById("listing-grid");
   let filtered = allListings;
 
-  if (activeFilter === "köpek" || activeFilter === "kedi") {
-    filtered = allListings.filter(i => (i.tur || "").toLowerCase().includes(activeFilter));
-  } else if (activeFilter === "diger") {
-    filtered = allListings.filter(i => {
+  if (activeFilters.ilanTuru !== "tumu") {
+    filtered = filtered.filter(i => (i.ilan_turu || "sahiplendirme") === activeFilters.ilanTuru);
+  }
+
+  if (activeFilters.tur === "köpek" || activeFilters.tur === "kedi") {
+    filtered = filtered.filter(i => (i.tur || "").toLowerCase().includes(activeFilters.tur));
+  } else if (activeFilters.tur === "diger") {
+    filtered = filtered.filter(i => {
       const t = (i.tur || "").toLowerCase();
       return !t.includes("köpek") && !t.includes("kedi");
     });
   }
 
+  if (activeFilters.yas !== "tumu") {
+    filtered = filtered.filter(i => i.yas === activeFilters.yas);
+  }
+
+  if (activeFilters.konum.trim()) {
+    const q = activeFilters.konum.trim().toLowerCase();
+    filtered = filtered.filter(i => (i.konum || "").toLowerCase().includes(q));
+  }
+
   if (filtered.length === 0) {
     grid.innerHTML = allListings.length === 0
       ? '<div class="empty-state">Henüz onaylı ilan yok. İlk ilanı sen ver!</div>'
-      : '<div class="empty-state">Bu filtreye uyan ilan yok.</div>';
+      : '<div class="empty-state">Bu filtrelere uyan ilan yok.</div>';
     return;
   }
 
@@ -251,9 +335,13 @@ function renderFilteredListings() {
     const photoHtml = ilan.fotograf_url
       ? `<img class="listing-photo" src="${ilan.fotograf_url}" alt="${ilan.hayvan_adi}">`
       : `<div class="listing-photo"></div>`;
+    const tur = ilan.ilan_turu || "sahiplendirme";
+    const badgeClass = tur === "çiftleştirme" ? "ciftlestirme" : "sahiplendirme";
+    const badgeLabel = tur === "çiftleştirme" ? "💞 Çiftleştirme" : "🏠 Sahiplendirme";
     card.innerHTML = `
       ${photoHtml}
       <div class="listing-info">
+        <span class="listing-type-badge ${badgeClass}">${badgeLabel}</span>
         <div class="listing-name">${ilan.hayvan_adi} · ${ilan.tur}</div>
         <div class="listing-meta">${[ilan.yas, ilan.cinsiyet, ilan.konum].filter(Boolean).join(" · ")}</div>
         <div class="listing-desc">${ilan.aciklama}</div>
@@ -263,13 +351,36 @@ function renderFilteredListings() {
   });
 }
 
-document.querySelectorAll(".filter-chip").forEach(chip => {
+document.querySelectorAll("#filter-ilan-turu .filter-chip").forEach(chip => {
   chip.addEventListener("click", () => {
-    document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+    document.querySelectorAll("#filter-ilan-turu .filter-chip").forEach(c => c.classList.remove("active"));
     chip.classList.add("active");
-    activeFilter = chip.dataset.tur;
+    activeFilters.ilanTuru = chip.dataset.val;
     renderFilteredListings();
   });
+});
+
+document.querySelectorAll("#filter-hayvan-turu .filter-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#filter-hayvan-turu .filter-chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    activeFilters.tur = chip.dataset.val;
+    renderFilteredListings();
+  });
+});
+
+document.querySelectorAll("#filter-yas .filter-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#filter-yas .filter-chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    activeFilters.yas = chip.dataset.val;
+    renderFilteredListings();
+  });
+});
+
+document.getElementById("filter-konum").addEventListener("input", (e) => {
+  activeFilters.konum = e.target.value;
+  renderFilteredListings();
 });
 
 const tabButtons = document.querySelectorAll(".tab-btn");
