@@ -56,7 +56,7 @@
 
   .nav-links { display: flex; align-items: center; gap: 22px; }
   .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
-  .nav-links a:hover { color: var(--teal); }
+  .nav-links a:hover, .nav-links a.current { color: var(--teal); }
 
   .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
   .nav-auth .who { color: var(--ink); font-weight: 600; }
@@ -124,8 +124,30 @@
   .app-shell {
     display: flex; flex-direction: column;
     background: var(--card); border: 1px solid var(--line); border-radius: 18px;
-    padding: 6px; min-height: 480px;
+    padding: 6px; min-height: 480px; position: relative; overflow: hidden;
   }
+  .app-shell.has-bg .chat-area { background: rgba(255, 255, 255, 0.86); }
+  .app-shell-bg-layer {
+    position: absolute; inset: 0; background-size: cover; background-position: center;
+    z-index: 0; opacity: 0;
+  }
+  .app-shell.has-bg .app-shell-bg-layer { opacity: 1; }
+  .app-shell > *:not(.app-shell-bg-layer) { position: relative; z-index: 1; }
+
+  .bg-customize-btn {
+    position: absolute; top: 14px; right: 14px; z-index: 5;
+    background: rgba(255,255,255,0.92); border: 1px solid var(--line); border-radius: 10px;
+    width: 36px; height: 36px; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bg-customize-btn:hover { border-color: var(--teal-bright); }
+  .bg-remove-btn {
+    position: absolute; top: 14px; right: 58px; z-index: 5;
+    background: rgba(255,255,255,0.92); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0 12px; height: 36px; font-size: 12px; font-weight: 600; color: var(--acil);
+    cursor: pointer; display: none;
+  }
+  .bg-remove-btn.visible { display: block; }
 
   .setup-card { padding: 26px; }
   .setup-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
@@ -220,6 +242,7 @@
       <span class="brand-name">Pati Sağlık</span>
     </a>
     <div class="nav-links">
+      <a href="/" class="current">Asistana Sor</a>
       <a href="/rehber">Veteriner &amp; petshop</a>
       <a href="/sahiplendir">Sahiplendirme</a>
       <a href="/forum">Forum</a>
@@ -253,7 +276,12 @@
 </div>
 
 <div class="main">
-  <div class="app-shell">
+  <div class="app-shell" id="app-shell">
+    <div class="app-shell-bg-layer" id="app-shell-bg-layer"></div>
+    <button type="button" class="bg-remove-btn" id="bg-remove-btn" title="Arka planı kaldır">Kaldır</button>
+    <button type="button" class="bg-customize-btn" id="bg-customize-btn" title="Sohbet arka planını özelleştir">🖼️</button>
+    <input type="file" id="bg-file-input" accept="image/*" style="display:none;">
+
     <div class="setup-card" id="setup-card">
       <div class="row">
         <div>
@@ -320,6 +348,8 @@ const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+let currentUserId = null;
+
 async function initSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   const el = document.getElementById("nav-auth");
@@ -327,7 +357,7 @@ async function initSession() {
   if (session) {
     const { data: profile } = await supabaseClient
       .from("kullanici_profilleri")
-      .select("kullanici_adi, admin")
+      .select("kullanici_adi, admin, arka_plan_url")
       .eq("id", session.user.id)
       .single();
     const username = profile ? profile.kullanici_adi : session.user.email;
@@ -337,11 +367,71 @@ async function initSession() {
       await supabaseClient.auth.signOut();
       window.location.reload();
     });
+
+    currentUserId = session.user.id;
+    if (profile && profile.arka_plan_url) {
+      applyBackground(profile.arka_plan_url);
+    }
   } else {
     el.innerHTML = `<a href="/giris">Giriş yap</a>`;
   }
 }
 initSession();
+
+function applyBackground(url) {
+  const shell = document.getElementById("app-shell");
+  const layer = document.getElementById("app-shell-bg-layer");
+  layer.style.backgroundImage = `url('${url}')`;
+  shell.classList.add("has-bg");
+  document.getElementById("bg-remove-btn").classList.add("visible");
+}
+
+document.getElementById("bg-customize-btn").addEventListener("click", () => {
+  if (!currentUserId) {
+    alert("Sohbet arka planını özelleştirmek için giriş yapman gerekiyor.");
+    window.location.href = "/giris";
+    return;
+  }
+  document.getElementById("bg-file-input").click();
+});
+
+document.getElementById("bg-file-input").addEventListener("change", async () => {
+  const file = document.getElementById("bg-file-input").files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    alert("Fotoğraf çok büyük (max 5MB).");
+    return;
+  }
+
+  const btn = document.getElementById("bg-customize-btn");
+  btn.textContent = "⏳";
+
+  const uzanti = file.name.split(".").pop();
+  const dosyaYolu = `${currentUserId}/arkaplan-${Date.now()}.${uzanti}`;
+
+  const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, file);
+  if (uploadError) {
+    alert("Yüklenemedi: " + uploadError.message);
+    btn.textContent = "🖼️";
+    return;
+  }
+
+  const { data: publicUrlData } = supabaseClient.storage.from("ilan-fotograflari").getPublicUrl(dosyaYolu);
+  const url = publicUrlData.publicUrl;
+
+  await supabaseClient.from("kullanici_profilleri").update({ arka_plan_url: url }).eq("id", currentUserId);
+
+  applyBackground(url);
+  btn.textContent = "🖼️";
+});
+
+document.getElementById("bg-remove-btn").addEventListener("click", async () => {
+  if (!currentUserId) return;
+  await supabaseClient.from("kullanici_profilleri").update({ arka_plan_url: null }).eq("id", currentUserId);
+  document.getElementById("app-shell").classList.remove("has-bg");
+  document.getElementById("bg-remove-btn").classList.remove("visible");
+  document.getElementById("app-shell-bg-layer").style.backgroundImage = "";
+});
 
 const urgencyConfig = {
   "ACİL":         { pct: 92,  label: "ACİL",           color: "var(--acil)",     bg: "var(--acil-bg)" },

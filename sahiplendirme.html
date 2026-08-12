@@ -33,7 +33,19 @@
   .wrap { max-width: 760px; margin: 0 auto; padding: 36px 24px 60px; }
   .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; }
   h1 { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; margin: 0 0 6px; color: var(--teal); }
-  .sub { color: var(--ink-soft); font-size: 14.5px; margin-bottom: 22px; }
+  .sub { color: var(--ink-soft); font-size: 14.5px; margin-bottom: 8px; }
+
+  .header-wrap { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 28px; }
+  .header-text { flex: 1; }
+  .header-collage { position: relative; width: 150px; height: 130px; flex-shrink: 0; }
+  .header-collage img {
+    position: absolute; border-radius: 14px; object-fit: cover;
+    background: var(--teal-soft); border: 4px solid var(--card);
+    box-shadow: 0 8px 18px rgba(11, 110, 108, 0.16);
+  }
+  .header-collage .hc1 { width: 110px; height: 110px; top: 0; left: 0; z-index: 2; }
+  .header-collage .hc2 { width: 90px; height: 90px; bottom: 0; right: 0; z-index: 1; transform: rotate(6deg); }
+  @media (max-width: 600px) { .header-wrap { flex-direction: column; align-items: flex-start; } .header-collage { align-self: center; } }
 
   .tabs { display: flex; gap: 8px; margin-bottom: 22px; }
   .tab-btn { padding: 10px 18px; border-radius: 100px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink-soft); }
@@ -136,6 +148,7 @@
       <span class="brand-name">Pati Sağlık</span>
     </a>
     <div class="nav-links">
+      <a href="/">Asistana Sor</a>
       <a href="/rehber">Veteriner &amp; petshop</a>
       <a href="/sahiplendir" class="current">Sahiplendirme</a>
       <a href="/forum">Forum</a>
@@ -145,9 +158,17 @@
 </nav>
 
 <div class="wrap">
-  <div class="eyebrow">Sahiplendirme</div>
-  <h1>Sahiplendirme destek sayfası</h1>
-  <p class="sub">Yeni bir yuva arayan bir hayvanın mı var, yoksa sen mi bir dost arıyorsun? Onaylanan ilanlar burada listelenir; ilan vermek için üye olman gerekiyor.</p>
+  <div class="header-wrap">
+    <div class="header-text">
+      <div class="eyebrow">Sahiplendirme</div>
+      <h1>Sahiplendirme destek sayfası</h1>
+      <p class="sub">Yeni bir yuva arayan bir hayvanın mı var, yoksa sen mi bir dost arıyorsun? Onaylanan ilanlar burada listelenir; ilan vermek için üye olman gerekiyor.</p>
+    </div>
+    <div class="header-collage" id="header-collage">
+      <img class="hc1" id="hc-photo-1" alt="">
+      <img class="hc2" id="hc-photo-2" alt="">
+    </div>
+  </div>
 
   <div class="tabs">
     <button class="tab-btn active" id="tab-listele" data-panel="panel-listele">📋 İlanları Gör</button>
@@ -204,6 +225,22 @@
 const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function loadHeaderPhotos() {
+  try {
+    const [catRes, dogRes] = await Promise.all([
+      fetch("https://api.thecatapi.com/v1/images/search"),
+      fetch("https://dog.ceo/api/breeds/image/random"),
+    ]);
+    const catData = await catRes.json();
+    const dogData = await dogRes.json();
+    document.getElementById("hc-photo-1").src = catData[0].url;
+    document.getElementById("hc-photo-2").src = dogData.message;
+  } catch (e) {
+    document.getElementById("header-collage").style.display = "none";
+  }
+}
+loadHeaderPhotos();
 
 let currentSession = null;
 let allListings = [];
