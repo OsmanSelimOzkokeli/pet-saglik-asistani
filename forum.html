@@ -37,15 +37,16 @@
 
   .header-wrap { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 28px; }
   .header-text { flex: 1; }
-  .header-collage { position: relative; width: 150px; height: 130px; flex-shrink: 0; }
+  .header-collage { position: relative; width: 230px; height: 210px; flex-shrink: 0; }
   .header-collage img {
-    position: absolute; border-radius: 14px; object-fit: cover;
+    position: absolute; border-radius: 16px; object-fit: cover;
     background: var(--teal-soft); border: 4px solid var(--card);
-    box-shadow: 0 8px 18px rgba(11, 110, 108, 0.16);
+    box-shadow: 0 8px 20px rgba(11, 110, 108, 0.16);
   }
-  .header-collage .hc1 { width: 110px; height: 110px; top: 0; left: 0; z-index: 2; }
-  .header-collage .hc2 { width: 90px; height: 90px; bottom: 0; right: 0; z-index: 1; transform: rotate(6deg); }
-  @media (max-width: 600px) { .header-wrap { flex-direction: column; align-items: flex-start; } .header-collage { align-self: center; } }
+  .header-collage .hc1 { width: 140px; height: 170px; top: 0; left: 0; z-index: 2; }
+  .header-collage .hc2 { width: 120px; height: 120px; top: 4px; right: 0; z-index: 1; transform: rotate(5deg); }
+  .header-collage .hc3 { width: 105px; height: 105px; bottom: 0; left: 70px; z-index: 3; transform: rotate(-6deg); }
+  @media (max-width: 620px) { .header-wrap { flex-direction: column; align-items: flex-start; } .header-collage { align-self: center; margin-top: 8px; } }
 
   .category-grid { display: flex; flex-direction: column; gap: 10px; }
   .category-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; cursor: pointer; transition: border-color 0.15s; display: flex; align-items: center; gap: 16px; }
@@ -127,6 +128,7 @@
     <div class="header-collage" id="header-collage">
       <img class="hc1" id="hc-photo-1" alt="">
       <img class="hc2" id="hc-photo-2" alt="">
+      <img class="hc3" id="hc-photo-3" alt="">
     </div>
   </div>
 
@@ -159,14 +161,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function loadHeaderPhotos() {
   try {
-    const [dogRes, catRes] = await Promise.all([
+    const [dogRes, catRes1, catRes2] = await Promise.all([
       fetch("https://dog.ceo/api/breeds/image/random"),
+      fetch("https://api.thecatapi.com/v1/images/search"),
       fetch("https://api.thecatapi.com/v1/images/search"),
     ]);
     const dogData = await dogRes.json();
-    const catData = await catRes.json();
+    const catData1 = await catRes1.json();
+    const catData2 = await catRes2.json();
     document.getElementById("hc-photo-1").src = dogData.message;
-    document.getElementById("hc-photo-2").src = catData[0].url;
+    document.getElementById("hc-photo-2").src = catData1[0].url;
+    document.getElementById("hc-photo-3").src = catData2[0].url;
   } catch (e) {
     document.getElementById("header-collage").style.display = "none";
   }
