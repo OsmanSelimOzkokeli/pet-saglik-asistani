@@ -6,6 +6,7 @@
 <title>Pet Sağlık Asistanı</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --paper: #F5F7F6;
@@ -46,6 +47,20 @@
     height: calc(100vh - 80px);
   }
 
+  .session-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 9px 14px;
+    margin-bottom: 16px;
+    font-size: 12.5px;
+    flex-shrink: 0;
+  }
+  .session-banner a, .session-banner span.action { color: var(--teal); font-weight: 600; text-decoration: none; cursor: pointer; }
+
   header { margin-bottom: 20px; flex-shrink: 0; }
 
   .eyebrow {
@@ -64,7 +79,12 @@
     margin: 0 0 6px;
   }
 
-  .sub { color: var(--ink-soft); font-size: 14px; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 10px; }
+
+  .nav-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .nav-links a {
+    font-size: 13px; color: var(--teal); font-weight: 600; text-decoration: none;
+  }
 
   .gauge-bar {
     display: none;
@@ -255,14 +275,17 @@
 <body>
 <div class="wrap">
 
+  <div class="session-banner" id="session-banner"></div>
+
   <header>
     <div class="eyebrow">Pet Sağlık Asistanı</div>
     <h1>Merak ettiğini anlat, birlikte konuşalım.</h1>
     <p class="sub">Bu bir sohbet asistanıdır, veteriner muayenesinin yerini tutmaz.</p>
-    <a href="/rehber" style="display:inline-block; margin-top:8px; margin-right:14px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">🏥 Yakındaki veteriner/petshop bul →</a>
-    <a href="/sahiplendir" style="display:inline-block; margin-top:8px; margin-right:14px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">🐾 Sahiplendirme sayfası →</a>
-    <a href="/giris" style="display:inline-block; margin-top:8px; margin-right:14px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">👤 Giriş Yap / Kayıt Ol →</a>
-    <a href="/forum" style="display:inline-block; margin-top:8px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">💬 Forum →</a>
+    <div class="nav-links">
+      <a href="/rehber">🏥 Veteriner/Petshop Bul</a>
+      <a href="/sahiplendir">🐾 Sahiplendirme</a>
+      <a href="/forum">💬 Forum</a>
+    </div>
   </header>
 
   <div class="gauge-bar" id="gauge-bar">
@@ -303,6 +326,33 @@
 <script>
 const API_URL = "http://localhost:8000/chat";
 
+const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function initSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const banner = document.getElementById("session-banner");
+
+  if (session) {
+    const { data: profile } = await supabaseClient
+      .from("kullanici_profilleri")
+      .select("kullanici_adi")
+      .eq("id", session.user.id)
+      .single();
+    const username = profile ? profile.kullanici_adi : session.user.email;
+    banner.innerHTML = `<span>👤 <strong>${username}</strong> olarak giriş yaptın</span><span class="action" id="logout-action">Çıkış Yap</span>`;
+    document.getElementById("logout-action").addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      window.location.reload();
+    });
+  } else {
+    banner.innerHTML = `<span>Forum ve ilan vermek için giriş yapabilirsin</span><a href="/giris">Giriş Yap / Kayıt Ol →</a>`;
+  }
+}
+
+initSession();
+
 const urgencyConfig = {
   "ACİL":         { pct: 92,  label: "ACİL",           color: "var(--acil)",     bg: "var(--acil-bg)" },
   "YAKINDA_VET":  { pct: 64,  label: "YAKINDA VET",    color: "var(--yakinda)",  bg: "var(--yakinda-bg)" },
@@ -342,7 +392,6 @@ photoInput.addEventListener("change", () => {
 
   const reader = new FileReader();
   reader.onload = () => {
-    // "data:image/jpeg;base64,XXXX" -> sadece base64 kısmını al
     secilenFotografBase64 = reader.result.split(",")[1];
     photoPreview.innerHTML = `
       <img src="${reader.result}" alt="Seçilen fotoğraf">
@@ -446,7 +495,6 @@ async function sendMessage() {
     gecmis.push({ rol: "kullanici", icerik: text });
     gecmis.push({ rol: "asistan", icerik: data.yanit });
 
-    // Fotoğrafı gönderdikten sonra temizle
     secilenFotografBase64 = null;
     photoInput.value = "";
     photoPreview.classList.remove("visible");
