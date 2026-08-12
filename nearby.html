@@ -140,9 +140,10 @@ async function initSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   const el = document.getElementById("nav-auth");
   if (session) {
-    const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi").eq("id", session.user.id).single();
+    const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin").eq("id", session.user.id).single();
     const username = profile ? profile.kullanici_adi : session.user.email;
-    el.innerHTML = `<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+    const adminLink = profile && profile.admin ? `<a href="/admin" style="margin-right:4px;">Admin paneli</a>` : "";
+    el.innerHTML = `${adminLink}<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
     document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
   } else {
     el.innerHTML = `<a href="/giris">Giriş yap</a>`;

@@ -600,6 +600,14 @@ def sahiplendir_sayfa():
     return {"status": "hata", "mesaj": "sahiplendirme.html bulunamadı"}
 
 
+@app.get("/admin")
+def admin_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "admin.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "admin.html bulunamadı"}
+    
+
 @app.get("/giris")
 def giris_sayfa():
     html_path = os.path.join(os.path.dirname(__file__), "auth.html")

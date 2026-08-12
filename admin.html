@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Paneli — Pati Sağlık</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #F1F7F4; --card: #FFFFFF; --ink: #14231F; --ink-soft: #54655D; --ink-faint: #8A9C92;
+    --teal: #0B6E6C; --teal-bright: #12968F; --teal-soft: #E1F0EE;
+    --green: #6E9B37; --green-soft: #EAF3E1;
+    --line: #DCE7E0; --acil: #B8433A; --acil-bg: #FBEAE8; --yakinda: #B9791E; --yakinda-bg: #FBF1E1;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .navbar { position: sticky; top: 0; z-index: 20; background: rgba(241, 247, 244, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .navbar-inner { max-width: 980px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+  .brand-mark { width: 26px; height: 26px; flex-shrink: 0; }
+  .brand-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; color: var(--teal); letter-spacing: -0.01em; }
+  .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .nav-auth .who { color: var(--ink); font-weight: 600; }
+  .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 36px 24px 60px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; }
+  h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; margin: 0 0 6px; color: var(--teal); }
+  .sub { color: var(--ink-soft); font-size: 14.5px; margin-bottom: 22px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn { padding: 9px 16px; border-radius: 100px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
+  .tab-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+  .listing-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; gap: 16px; margin-bottom: 12px; }
+  .listing-photo { width: 84px; height: 84px; border-radius: 10px; object-fit: cover; background: var(--teal-soft); flex-shrink: 0; }
+  .listing-info { flex: 1; min-width: 0; }
+  .listing-name { font-weight: 600; font-size: 16px; margin-bottom: 2px; }
+  .listing-meta { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 6px; }
+  .listing-desc { font-size: 13.5px; color: var(--ink); line-height: 1.5; margin-bottom: 8px; }
+  .listing-contact { font-size: 12.5px; color: var(--teal); font-weight: 600; margin-bottom: 10px; }
+
+  .status-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; margin-bottom: 8px; }
+  .status-badge.beklemede { background: var(--yakinda-bg); color: var(--yakinda); }
+  .status-badge.onaylı { background: var(--green-soft); color: #3F5A22; }
+  .status-badge.reddedildi { background: var(--acil-bg); color: var(--acil); }
+
+  .action-row { display: flex; gap: 8px; }
+  .action-btn { border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .approve-btn { background: var(--teal); color: #fff; }
+  .approve-btn:hover { background: var(--teal-bright); }
+  .reject-btn { background: var(--acil-bg); color: var(--acil); }
+  .reject-btn:hover { background: #F5D5D2; }
+  .action-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .empty-state { text-align: center; color: var(--ink-faint); font-size: 14px; padding: 40px 20px; background: var(--card); border: 1px dashed var(--line); border-radius: 14px; }
+  .denied-box { background: var(--acil-bg); color: var(--acil); border-radius: 12px; padding: 20px; font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+        <path d="M6 18C6 13 10 9 16 9C22 9 26 13 26 18C26 23 21 26 16 26C11 26 6 23 6 18Z" stroke="#0B6E6C" stroke-width="2"/>
+        <path d="M11 16L14 20L16 15L18 20L21 16" stroke="#6E9B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">Pati Sağlık</span>
+    </a>
+    <div class="nav-auth" id="nav-auth"></div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="eyebrow">Yönetim</div>
+  <h1>Admin paneli</h1>
+  <p class="sub">Sahiplendirme ilanlarını incele, onayla ya da reddet.</p>
+
+  <div id="content">
+    <div class="empty-state">Yükleniyor...</div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allListings = [];
+let activeTab = "beklemede";
+
+async function initSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const navAuth = document.getElementById("nav-auth");
+
+  if (!session) {
+    navAuth.innerHTML = `<a href="/giris">Giriş yap</a>`;
+    showDenied("Bu sayfayı görmek için giriş yapman gerekiyor.");
+    return;
+  }
+
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin").eq("id", session.user.id).single();
+  const username = profile ? profile.kullanici_adi : session.user.email;
+  navAuth.innerHTML = `<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+  document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
+
+  if (!profile || !profile.admin) {
+    showDenied("Bu sayfaya erişim yetkin yok.");
+    return;
+  }
+
+  await loadListings();
+}
+
+function showDenied(msg) {
+  document.getElementById("content").innerHTML = `<div class="denied-box">${msg}</div>`;
+}
+
+async function loadListings() {
+  const content = document.getElementById("content");
+  content.innerHTML = `
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-val="beklemede">Beklemede</button>
+      <button class="tab-btn" data-val="onaylı">Onaylı</button>
+      <button class="tab-btn" data-val="reddedildi">Reddedildi</button>
+      <button class="tab-btn" data-val="tumu">Tümü</button>
+    </div>
+    <div id="listing-list"><div class="empty-state">Yükleniyor...</div></div>
+  `;
+
+  document.querySelectorAll("#tabs .tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#tabs .tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeTab = btn.dataset.val;
+      renderListings();
+    });
+  });
+
+  const { data, error } = await supabaseClient
+    .from("sahiplendirme_ilanlari")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    document.getElementById("listing-list").innerHTML = `<div class="empty-state">Yüklenemedi: ${error.message}</div>`;
+    return;
+  }
+
+  allListings = data || [];
+  renderListings();
+}
+
+function renderListings() {
+  const list = document.getElementById("listing-list");
+  const filtered = activeTab === "tumu" ? allListings : allListings.filter(i => i.durum === activeTab);
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-state">Bu kategoride ilan yok.</div>';
+    return;
+  }
+
+  list.innerHTML = "";
+  filtered.forEach(ilan => {
+    const card = document.createElement("div");
+    card.className = "listing-card";
+    const photoHtml = ilan.fotograf_url
+      ? `<img class="listing-photo" src="${ilan.fotograf_url}" alt="${ilan.hayvan_adi}">`
+      : `<div class="listing-photo"></div>`;
+
+    const ilanTuru = ilan.ilan_turu === "çiftleştirme" ? "💞 Çiftleştirme" : "🏠 Sahiplendirme";
+
+    card.innerHTML = `
+      ${photoHtml}
+      <div class="listing-info">
+        <span class="status-badge ${ilan.durum}">${ilan.durum}</span>
+        <div class="listing-name">${ilan.hayvan_adi} · ${ilan.tur} · ${ilanTuru}</div>
+        <div class="listing-meta">${[ilan.yas, ilan.cinsiyet, ilan.konum].filter(Boolean).join(" · ")}</div>
+        <div class="listing-desc">${ilan.aciklama}</div>
+        <div class="listing-contact">📞 ${ilan.iletisim}</div>
+        <div class="action-row">
+          <button class="action-btn approve-btn" data-id="${ilan.id}" data-action="onaylı">Onayla</button>
+          <button class="action-btn reject-btn" data-id="${ilan.id}" data-action="reddedildi">Reddet</button>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  list.querySelectorAll(".action-btn").forEach(btn => {
+    btn.addEventListener("click", () => updateStatus(btn.dataset.id, btn.dataset.action, btn));
+  });
+}
+
+async function updateStatus(id, yeniDurum, btnEl) {
+  const card = btnEl.closest(".listing-card");
+  card.querySelectorAll(".action-btn").forEach(b => b.disabled = true);
+
+  const { error } = await supabaseClient.from("sahiplendirme_ilanlari").update({ durum: yeniDurum }).eq("id", id);
+
+  if (error) {
+    alert("Güncellenemedi: " + error.message);
+    card.querySelectorAll(".action-btn").forEach(b => b.disabled = false);
+    return;
+  }
+
+  const item = allListings.find(i => i.id === id);
+  if (item) item.durum = yeniDurum;
+  renderListings();
+}
+
+initSession();
+</script>
+</body>
+</html>
