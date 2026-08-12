@@ -1,21 +1,23 @@
 """
-Pet Sağlık Asistanı - Semptom & Aciliyet Triyaj + Sohbet Servisi
+Pet Sağlık Asistanı - Semptom & Aciliyet Triyaj Servisi
 ---------------------------------------------------------
-Sahip, hayvanının semptomlarını (metin ve isteğe bağlı fotoğrafla) anlatır,
-AI ile sohbet ederek aciliyet seviyesi ve genel yönlendirme alır.
-Ayrıca Google Places API ile yakındaki veteriner/petshop önerisi ve
-Supabase ile sahiplendirme ilan sistemi sunar.
+Kullanıcının evcil hayvanı için yazdığı semptomları (ve isteğe bağlı fotoğrafı)
+OpenAI ile analiz edip, olası nedenler + aciliyet seviyesi + genel ilk müdahale
+bilgisi + "gerçek veterinere gitmesi gerekip gerekmediği" önerisi üretir.
 
-Çalıştırma (mock mod, para harcamadan):
+ÖNEMLİ TASARIM KARARI:
+Kritik/acil semptomlar sabit kodlanmış bir anahtar kelime katmanıyla tespit
+edilir ve AI'nın yorumundan BAĞIMSIZ olarak her zaman "ACİL" seviyesine
+zorlanır. AI, bu tür durumlarda aciliyeti düşürecek şekilde konuşamaz.
+
+Çalıştırma:
     pip install fastapi uvicorn openai --break-system-packages
-    set MOCK_MODE=1
-    uvicorn app:app --port 8000
+    export OPENAI_API_KEY=...
+    uvicorn app:app --reload --port 8000
 """
 
 import base64
 import os
-import json
-import random
 from enum import Enum
 from typing import Optional
 
@@ -26,6 +28,8 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="Pet Sağlık Asistanı")
 
+# Yerel geliştirme için CORS'u açıyoruz (index.html dosyasını doğrudan
+# tarayıcıda açsan bile /triage'a istek atabilesin diye).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,15 +43,17 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 
 class Urgency(str, Enum):
-    ACIL = "ACİL"
-    YAKINDA_VET = "YAKINDA_VET"
-    GOZLEMLE = "GÖZLEMLE"
-    DUSUK_ENDISE = "DÜŞÜK_ENDİŞE"
+    ACIL = "ACİL"                     # hemen acil veteriner
+    YAKINDA_VET = "YAKINDA_VET"       # 24 saat içinde veteriner
+    GOZLEMLE = "GÖZLEMLE"             # birkaç gün gözlem, kötüleşirse veteriner
+    DUSUK_ENDISE = "DÜŞÜK_ENDİŞE"     # muhtemelen önemsiz
 
 
 # ---------------------------------------------------------------------------
-# Sabit kodlanmış acil durum katmanı
+# Sabit kodlanmış acil durum katmanı (AI'dan bağımsız, override edilemez)
 # ---------------------------------------------------------------------------
+# Not: Bu liste kapsamlı değildir; sadece gösterge niteliğindedir. Gerçek
+# kullanımda veteriner hekim danışmanlığıyla genişletilmeli/doğrulanmalıdır.
 
 EMERGENCY_KEYWORDS = [
     "nefes al", "nefes darlığı", "nefes alamıyor", "soluk alamıyor",
@@ -63,6 +69,7 @@ EMERGENCY_KEYWORDS = [
 
 
 def check_hardcoded_emergency(symptom_text: str) -> Optional[str]:
+    """Metinde acil anahtar kelime var mı kontrol eder. Varsa eşleşen kelimeyi döner."""
     text_lower = symptom_text.lower()
     for keyword in EMERGENCY_KEYWORDS:
         if keyword in text_lower:
@@ -71,8 +78,28 @@ def check_hardcoded_emergency(symptom_text: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Modeller (sohbet modu)
+# Modeller
 # ---------------------------------------------------------------------------
+
+class TriageRequest(BaseModel):
+    tur: str = Field(..., description="Hayvan türü, örn: 'köpek', 'kedi', 'tavşan', 'muhabbet kuşu'")
+    yas: Optional[str] = Field(None, description="Yaklaşık yaş, örn: '2 yaşında', '6 aylık'")
+    semptom_metni: str = Field(..., min_length=3, description="Kullanıcının yazdığı semptom açıklaması")
+    fotograf_base64: Optional[str] = Field(None, description="İsteğe bağlı, base64 kodlu fotoğraf")
+
+
+class TriageResponse(BaseModel):
+    aciliyet: Urgency
+    aciliyet_sabit_kodlu_mu: bool = Field(..., description="True ise bu seviye AI değil, sabit kural tarafından belirlendi")
+    olasi_nedenler: list[str]
+    genel_tavsiye: str
+    veteriner_onerisi: str
+    uyari: str = (
+        "Bu değerlendirme bir veteriner hekim muayenesinin yerini tutmaz. "
+        "Kesin teşhis ve tedavi için mutlaka bir veteriner hekime başvurun."
+    )
+
+
 
 class ChatMessage(BaseModel):
     rol: str = Field(..., description="'kullanici' veya 'asistan'")
@@ -82,13 +109,13 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     tur: str = Field(..., description="Hayvan türü")
     yas: Optional[str] = Field(None, description="Yaklaşık yaş")
-    gecmis: list[ChatMessage] = Field(default_factory=list)
-    yeni_mesaj: str = Field(..., min_length=1)
+    gecmis: list[ChatMessage] = Field(default_factory=list, description="Önceki mesajlar (bu yeni mesaj hariç)")
+    yeni_mesaj: str = Field(..., min_length=1, description="Kullanıcının yeni mesajı")
     fotograf_base64: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
-    yanit: str
+    yanit: str = Field(..., description="Asistanın konuşma dilinde yanıtı")
     aciliyet: Urgency
     aciliyet_sabit_kodlu_mu: bool
     uyari: str = (
@@ -96,6 +123,28 @@ class ChatResponse(BaseModel):
         "Kesin teşhis ve tedavi için mutlaka bir veteriner hekime başvurun."
     )
 
+
+# ---------------------------------------------------------------------------
+# OpenAI entegrasyonu
+# ---------------------------------------------------------------------------
+
+SYSTEM_PROMPT = """Sen bir evcil hayvan sağlığı ön-değerlendirme asistanısın. Amacın kesin
+teşhis koymak DEĞİL, sahibine olası nedenler, genel bakım önerileri ve ne kadar
+aciliyetle bir veterinere gitmesi gerektiği konusunda rehberlik etmek.
+
+KURALLAR:
+- Asla kesin teşhis koyma ("kesinlikle X hastalığı" deme), her zaman "olabilir",
+  "şu ihtimaller arasında" gibi ifadeler kullan.
+- Asla ilaç ismi, doz, veya insan ilacı önerisi verme (ör. parasetamol gibi
+  hayvanlar için TOKSİK olabilecek insan ilaçları asla önerme).
+- Aciliyet seviyesini şu 4 kategoriden seç: ACİL, YAKINDA_VET, GÖZLEMLE, DÜŞÜK_ENDİŞE.
+  Şüphedeysen her zaman bir üst aciliyet seviyesini seç (daha temkinli ol).
+  Aciliyeti gerçekte olduğundan DÜŞÜK gösterme.
+- Her yanıtta mutlaka "bir veteriner hekime danışın" ifadesi bulunsun.
+- Yanıtını SADECE şu JSON formatında ver, başka hiçbir metin ekleme:
+  {"aciliyet": "ACİL|YAKINDA_VET|GÖZLEMLE|DÜŞÜK_ENDİŞE", "olasi_nedenler": ["...", "..."],
+   "genel_tavsiye": "...", "veteriner_onerisi": "..."}
+"""
 
 CHAT_SYSTEM_PROMPT = """Sen bir evcil hayvan sağlığı ön-değerlendirme asistanısın. Sahibiyle
 doğal, sıcak ve sakin bir sohbet dilinde konuşuyorsun — form doldurtmuyorsun,
@@ -116,7 +165,85 @@ KURALLAR:
 """
 
 
+import random
+
+
+def generate_mock_response(req: TriageRequest) -> dict:
+    """
+    Gerçek OpenAI çağrısı yapmadan, geliştirme/test amaçlı sahte bir yanıt üretir.
+    MOCK_MODE=1 olduğunda kullanılır. Böylece ödeme yapmadan formu, akışı ve
+    arayüzü uçtan uca test edebilirsin.
+    """
+    text_lower = req.semptom_metni.lower()
+
+    if any(k in text_lower for k in ["kusuyor", "kusma", "ishal"]):
+        return {
+            "aciliyet": "YAKINDA_VET",
+            "olasi_nedenler": [
+                "Hafif mide-bağırsak rahatsızlığı (sahte/mock yanıt)",
+                "Beslenme değişikliği veya yediği bir şeyin hassasiyet yaratması (mock)",
+            ],
+            "genel_tavsiye": "[MOCK YANIT] 12 saat kadar yemek verilmeyip su takip edilebilir, kusma devam ederse veterinere gidin.",
+            "veteriner_onerisi": "[MOCK YANIT] 24 saat içinde bir veterinere danışmanız önerilir.",
+        }
+
+    return {
+        "aciliyet": random.choice(["GÖZLEMLE", "DÜŞÜK_ENDİŞE"]),
+        "olasi_nedenler": ["Bu bir MOCK (sahte) yanıttır — gerçek API henüz çağrılmadı."],
+        "genel_tavsiye": "[MOCK YANIT] Bu, gerçek OpenAI çağrısı olmadan üretilen test verisidir.",
+        "veteriner_onerisi": "[MOCK YANIT] Gerçek bir değerlendirme için lütfen OPENAI_API_KEY ekleyip MOCK_MODE'u kapatın.",
+    }
+
+
+def call_openai_triage(req: TriageRequest) -> dict:
+    # --- MOCK MOD: gerçek API'ye para harcamadan test etmek için ---
+    if os.environ.get("MOCK_MODE") == "1":
+        return generate_mock_response(req)
+
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY tanımlı değil")
+
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openai paketi kurulu değil")
+
+    client = OpenAI(api_key=api_key)
+
+    user_content = [
+        {
+            "type": "text",
+            "text": (
+                f"Hayvan türü: {req.tur}\n"
+                f"Yaş: {req.yas or 'belirtilmedi'}\n"
+                f"Semptom: {req.semptom_metni}"
+            ),
+        }
+    ]
+
+    if req.fotograf_base64:
+        user_content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{req.fotograf_base64}"},
+        })
+
+    response = client.chat.completions.create(
+        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        response_format={"type": "json_object"},
+        max_tokens=500,
+    )
+
+    import json
+    return json.loads(response.choices[0].message.content)
+
+
 def generate_mock_chat_response(req: ChatRequest) -> dict:
+    """Sohbet modu için sahte yanıt - para harcamadan arayüzü test etmek için."""
     text_lower = req.yeni_mesaj.lower()
     turn_count = len(req.gecmis)
 
@@ -287,89 +414,53 @@ def call_google_places(req: NearbyRequest) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Aşama 3: Sahiplendirme destek sayfası (Supabase)
+# Endpoint
 # ---------------------------------------------------------------------------
 
-class SahiplendirmeIlan(BaseModel):
-    hayvan_adi: str
-    tur: str
-    yas: Optional[str] = None
-    cinsiyet: Optional[str] = None
-    aciklama: str
-    fotograf_url: Optional[str] = None
-    konum: str
-    iletisim: str
+URGENCY_ORDER = {
+    Urgency.DUSUK_ENDISE: 0,
+    Urgency.GOZLEMLE: 1,
+    Urgency.YAKINDA_VET: 2,
+    Urgency.ACIL: 3,
+}
 
 
-def supabase_headers() -> dict:
-    key = os.environ.get("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E")
-    return {
-        "apikey": key,
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-    }
+@app.post("/triage", response_model=TriageResponse)
+def triage(req: TriageRequest):
+    # 1. Sabit kodlanmış acil durum kontrolü (AI'dan ÖNCE ve bağımsız)
+    matched_keyword = check_hardcoded_emergency(req.semptom_metni)
 
+    # 2. AI değerlendirmesi
+    ai_result = call_openai_triage(req)
 
-def supabase_url() -> str:
-    url = os.environ.get("SUPABASE_URL", "https://qkvxlnlsdzmcozwkvbgf.supabase.co")
-    return url.rstrip("/")
+    ai_urgency = Urgency(ai_result.get("aciliyet", Urgency.GOZLEMLE))
 
+    if matched_keyword:
+        final_urgency = Urgency.ACIL
+        sabit_kodlu = True
+    else:
+        final_urgency = ai_urgency
+        sabit_kodlu = False
 
-@app.post("/sahiplendirme")
-def sahiplendirme_ekle(ilan: SahiplendirmeIlan):
-    import urllib.request
-    import urllib.error
+    return TriageResponse(
+        aciliyet=final_urgency,
+        aciliyet_sabit_kodlu_mu=sabit_kodlu,
+        olasi_nedenler=ai_result.get("olasi_nedenler", []),
+        genel_tavsiye=ai_result.get("genel_tavsiye", ""),
+        veteriner_onerisi=(
+            "Belirttiğiniz semptomlar acil olabilecek işaretler içeriyor. "
+            "LÜTFEN HEMEN bir acil veteriner kliniğine gidin."
+            if sabit_kodlu
+            else ai_result.get("veteriner_onerisi", "")
+        ),
+    )
 
-    endpoint = f"{supabase_url()}/rest/v1/sahiplendirme_ilanlari"
-    body = json.dumps(ilan.model_dump()).encode()
-
-    req = urllib.request.Request(endpoint, data=body, headers=supabase_headers(), method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            response.read()  # return=minimal ile boş dönüyor, sadece başarı kontrolü
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode()
-        raise HTTPException(status_code=502, detail=f"Supabase hatası: {detail}")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Supabase bağlantı hatası: {e}")
-
-    return {"basarili": True, "ilan": ilan.model_dump(),
-            "mesaj": "İlanınız alındı, onaylandıktan sonra listede görünecek."}
-
-
-@app.get("/sahiplendirme")
-def sahiplendirme_listele():
-    import urllib.request
-    import urllib.error
-    import urllib.parse
-
-    params = urllib.parse.urlencode({
-        "durum": "eq.onaylı",
-        "order": "created_at.desc",
-        "select": "*",
-    })
-    endpoint = f"{supabase_url()}/rest/v1/sahiplendirme_ilanlari?{params}"
-
-    req = urllib.request.Request(endpoint, headers=supabase_headers(), method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read())
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode()
-        raise HTTPException(status_code=502, detail=f"Supabase hatası: {detail}")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Supabase bağlantı hatası: {e}")
-
-    return {"ilanlar": data}
-
-
-# ---------------------------------------------------------------------------
-# Endpoint'ler
-# ---------------------------------------------------------------------------
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
+    # Acil durum kontrolünü SADECE yeni mesajla değil, konuşmanın tamamıyla
+    # (kullanıcının önceki mesajları dahil) yapıyoruz - biri iki mesaj önce
+    # "kan geliyor" dediyse bu bilgiyi unutmamalıyız.
     tum_kullanici_mesajlari = [m.icerik for m in req.gecmis if m.rol == "kullanici"]
     tum_kullanici_mesajlari.append(req.yeni_mesaj)
 
@@ -407,6 +498,84 @@ def nearby(req: NearbyRequest):
     return NearbyResponse(**result)
 
 
+# ---------------------------------------------------------------------------
+# Aşama 3: Sahiplendirme destek sayfası (Supabase)
+# ---------------------------------------------------------------------------
+
+class SahiplendirmeIlan(BaseModel):
+    hayvan_adi: str
+    tur: str
+    yas: Optional[str] = None
+    cinsiyet: Optional[str] = None
+    aciklama: str
+    fotograf_url: Optional[str] = None
+    konum: str
+    iletisim: str
+
+
+def supabase_headers() -> dict:
+    key = os.environ.get("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E")
+    return {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+
+def supabase_url() -> str:
+    url = os.environ.get("SUPABASE_URL", "https://qkvxlnlsdzmcozwkvbgf.supabase.co")
+    return url.rstrip("/")
+
+
+@app.post("/sahiplendirme")
+def sahiplendirme_ekle(ilan: SahiplendirmeIlan):
+    import urllib.request
+    import urllib.error
+
+    endpoint = f"{supabase_url()}/rest/v1/sahiplendirme_ilanlari"
+    body = json.dumps(ilan.model_dump()).encode()
+
+    req = urllib.request.Request(endpoint, data=body, headers=supabase_headers(), method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()
+        raise HTTPException(status_code=502, detail=f"Supabase hatası: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Supabase bağlantı hatası: {e}")
+
+    return {"basarili": True, "ilan": data[0] if data else None,
+            "mesaj": "İlanınız alındı, onaylandıktan sonra listede görünecek."}
+
+
+@app.get("/sahiplendirme")
+def sahiplendirme_listele():
+    import urllib.request
+    import urllib.error
+    import urllib.parse
+
+    params = urllib.parse.urlencode({
+        "durum": "eq.onaylı",
+        "order": "created_at.desc",
+        "select": "*",
+    })
+    endpoint = f"{supabase_url()}/rest/v1/sahiplendirme_ilanlari?{params}"
+
+    req = urllib.request.Request(endpoint, headers=supabase_headers(), method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()
+        raise HTTPException(status_code=502, detail=f"Supabase hatası: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Supabase bağlantı hatası: {e}")
+
+    return {"ilanlar": data}
+
+
 @app.get("/")
 def root():
     html_path = os.path.join(os.path.dirname(__file__), "index.html")
@@ -429,3 +598,19 @@ def sahiplendir_sayfa():
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "sahiplendirme.html bulunamadı"}
+
+
+@app.get("/giris")
+def giris_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "auth.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "auth.html bulunamadı"}
+
+
+@app.get("/forum")
+def forum_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "forum.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "forum.html bulunamadı"}

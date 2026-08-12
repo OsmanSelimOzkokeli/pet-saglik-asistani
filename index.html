@@ -260,7 +260,9 @@
     <h1>Merak ettiğini anlat, birlikte konuşalım.</h1>
     <p class="sub">Bu bir sohbet asistanıdır, veteriner muayenesinin yerini tutmaz.</p>
     <a href="/rehber" style="display:inline-block; margin-top:8px; margin-right:14px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">🏥 Yakındaki veteriner/petshop bul →</a>
-    <a href="/sahiplendir" style="display:inline-block; margin-top:8px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">🐾 Sahiplendirme sayfası →</a>
+    <a href="/sahiplendir" style="display:inline-block; margin-top:8px; margin-right:14px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">🐾 Sahiplendirme sayfası →</a>
+    <a href="/giris" style="display:inline-block; margin-top:8px; margin-right:14px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">👤 Giriş Yap / Kayıt Ol →</a>
+    <a href="/forum" style="display:inline-block; margin-top:8px; font-size:13px; color:var(--teal); font-weight:600; text-decoration:none;">💬 Forum →</a>
   </header>
 
   <div class="gauge-bar" id="gauge-bar">
@@ -340,6 +342,7 @@ photoInput.addEventListener("change", () => {
 
   const reader = new FileReader();
   reader.onload = () => {
+    // "data:image/jpeg;base64,XXXX" -> sadece base64 kısmını al
     secilenFotografBase64 = reader.result.split(",")[1];
     photoPreview.innerHTML = `
       <img src="${reader.result}" alt="Seçilen fotoğraf">
@@ -443,6 +446,7 @@ async function sendMessage() {
     gecmis.push({ rol: "kullanici", icerik: text });
     gecmis.push({ rol: "asistan", icerik: data.yanit });
 
+    // Fotoğrafı gönderdikten sonra temizle
     secilenFotografBase64 = null;
     photoInput.value = "";
     photoPreview.classList.remove("visible");

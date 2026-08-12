@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #F5F7F6; --card: #FFFFFF; --ink: #1F2E2C; --ink-soft: #52625F;
+    --teal: #1F4B47; --teal-soft: #E4ECEA; --line: #DDE5E2;
+    --acil: #B8433A; --acil-bg: #FBEAE8; --gozlemle: #3E7C74; --gozlemle-bg: #E7F1EF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'Inter', sans-serif; min-height: 100vh;
+    display: flex; justify-content: center; padding: 40px 20px 60px;
+  }
+  .wrap { width: 100%; max-width: 720px; }
+  .back-link { display: inline-block; font-size: 13px; color: var(--teal); text-decoration: none; margin-bottom: 16px; font-weight: 600; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); font-weight: 600; margin-bottom: 8px; }
+  h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 24px; }
+
+  .session-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 16px; margin-bottom: 20px; font-size: 13px;
+  }
+  .session-banner a { color: var(--teal); font-weight: 600; text-decoration: none; }
+
+  .category-grid { display: flex; flex-direction: column; gap: 10px; }
+  .category-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; cursor: pointer; transition: border-color 0.15s;
+  }
+  .category-card:hover { border-color: var(--teal); }
+  .category-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+  .category-desc { font-size: 13px; color: var(--ink-soft); }
+
+  .topic-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .topic-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; cursor: pointer;
+  }
+  .topic-card:hover { border-color: var(--teal); }
+  .topic-title { font-weight: 600; font-size: 14.5px; margin-bottom: 3px; }
+  .topic-meta { font-size: 12px; color: var(--ink-soft); }
+
+  .new-topic-btn {
+    background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 11px 18px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
+    margin-bottom: 16px;
+  }
+  .new-topic-btn:hover { background: #163936; }
+
+  .nav-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .nav-back { font-size: 13px; color: var(--teal); font-weight: 600; cursor: pointer; }
+
+  .form-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-bottom: 20px; }
+  .field { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+  input, textarea {
+    width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink);
+  }
+  textarea { min-height: 100px; resize: vertical; }
+  .submit-btn {
+    background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 12px 20px; font-size: 14.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+  .submit-btn:hover { background: #163936; }
+  .submit-btn:disabled { background: #9AAEAB; cursor: wait; }
+
+  .login-prompt {
+    background: var(--teal-soft); border-radius: 10px; padding: 14px 16px;
+    font-size: 13.5px; margin-bottom: 16px;
+  }
+  .login-prompt a { color: var(--teal); font-weight: 600; }
+
+  .topic-detail-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-bottom: 20px; }
+  .topic-detail-title { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .topic-detail-meta { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 14px; }
+  .topic-detail-body { font-size: 14.5px; line-height: 1.6; }
+
+  .comment-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .comment-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  .comment-meta { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; font-weight: 600; }
+  .comment-body { font-size: 13.5px; line-height: 1.5; }
+
+  .empty-state { text-align: center; color: var(--ink-soft); font-size: 14px; padding: 30px 0; }
+  .error-box { display: none; background: var(--acil-bg); color: var(--acil); border-radius: 8px; padding: 12px; font-size: 13px; margin-top: 10px; }
+  .error-box.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/" class="back-link">← Ana sayfaya dön</a>
+  <div class="eyebrow">Forum</div>
+  <h1>Topluluk Forumu</h1>
+  <p class="sub">Herkes okuyabilir, yazmak için üye olman gerekiyor.</p>
+
+  <div class="session-banner" id="session-banner"></div>
+
+  <!-- VIEW: kategori listesi -->
+  <div id="view-categories">
+    <div class="category-grid" id="category-grid">
+      <div class="empty-state">Yükleniyor...</div>
+    </div>
+  </div>
+
+  <!-- VIEW: konu listesi (bir kategori içinde) -->
+  <div id="view-topics" style="display:none;">
+    <div class="nav-row">
+      <span class="nav-back" id="back-to-categories">← Kategoriler</span>
+    </div>
+    <h2 id="topic-list-category-name" style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 14px;"></h2>
+
+    <div id="new-topic-area"></div>
+
+    <div class="topic-list" id="topic-list">
+      <div class="empty-state">Yükleniyor...</div>
+    </div>
+  </div>
+
+  <!-- VIEW: konu detay + yorumlar -->
+  <div id="view-topic-detail" style="display:none;">
+    <div class="nav-row">
+      <span class="nav-back" id="back-to-topics">← Konu listesi</span>
+    </div>
+
+    <div class="topic-detail-card" id="topic-detail-card"></div>
+
+    <h3 style="font-size:15px; margin-bottom:10px;">Yorumlar</h3>
+    <div class="comment-list" id="comment-list"></div>
+
+    <div id="comment-form-area"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentSession = null;
+let currentUsername = null;
+let currentCategoryId = null;
+let currentCategoryName = null;
+let currentTopicId = null;
+
+function showView(id) {
+  ["view-categories", "view-topics", "view-topic-detail"].forEach(v => {
+    document.getElementById(v).style.display = (v === id) ? "block" : "none";
+  });
+}
+
+async function initSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  currentSession = session;
+
+  const banner = document.getElementById("session-banner");
+  if (session) {
+    const { data: profile } = await supabaseClient
+      .from("kullanici_profilleri")
+      .select("kullanici_adi")
+      .eq("id", session.user.id)
+      .single();
+    currentUsername = profile ? profile.kullanici_adi : session.user.email;
+    banner.innerHTML = `<span>👤 <strong>${currentUsername}</strong> olarak giriş yaptın</span><a href="/giris">Hesabım</a>`;
+  } else {
+    banner.innerHTML = `<span>Yazmak için giriş yapman gerekiyor</span><a href="/giris">Giriş Yap / Kayıt Ol →</a>`;
+  }
+}
+
+async function loadCategories() {
+  const grid = document.getElementById("category-grid");
+  const { data, error } = await supabaseClient.from("forum_kategoriler").select("*").order("id");
+
+  if (error || !data || data.length === 0) {
+    grid.innerHTML = '<div class="empty-state">Kategoriler yüklenemedi.</div>';
+    return;
+  }
+
+  grid.innerHTML = "";
+  data.forEach(kat => {
+    const card = document.createElement("div");
+    card.className = "category-card";
+    card.innerHTML = `<div class="category-name">${kat.ad}</div><div class="category-desc">${kat.aciklama || ""}</div>`;
+    card.addEventListener("click", () => openCategory(kat.id, kat.ad));
+    grid.appendChild(card);
+  });
+}
+
+async function openCategory(id, ad) {
+  currentCategoryId = id;
+  currentCategoryName = ad;
+  document.getElementById("topic-list-category-name").textContent = ad;
+  showView("view-topics");
+  renderNewTopicArea();
+  await loadTopics();
+}
+
+function renderNewTopicArea() {
+  const area = document.getElementById("new-topic-area");
+  if (!currentSession) {
+    area.innerHTML = `<div class="login-prompt">Konu açmak için <a href="/giris">giriş yapman</a> gerekiyor.</div>`;
+    return;
+  }
+  area.innerHTML = `<button class="new-topic-btn" id="show-new-topic-form">+ Yeni Konu Aç</button><div id="new-topic-form-wrap"></div>`;
+  document.getElementById("show-new-topic-form").addEventListener("click", showNewTopicForm);
+}
+
+function showNewTopicForm() {
+  const wrap = document.getElementById("new-topic-form-wrap");
+  wrap.innerHTML = `
+    <div class="form-card">
+      <div class="field"><label>Başlık</label><input type="text" id="new-topic-baslik"></div>
+      <div class="field"><label>İçerik</label><textarea id="new-topic-icerik"></textarea></div>
+      <button class="submit-btn" id="submit-new-topic">Konuyu Paylaş</button>
+      <div class="error-box" id="new-topic-error"></div>
+    </div>
+  `;
+  document.getElementById("submit-new-topic").addEventListener("click", submitNewTopic);
+}
+
+async function submitNewTopic() {
+  const baslik = document.getElementById("new-topic-baslik").value.trim();
+  const icerik = document.getElementById("new-topic-icerik").value.trim();
+  const errBox = document.getElementById("new-topic-error");
+
+  if (!baslik || !icerik) {
+    errBox.textContent = "Başlık ve içerik boş olamaz.";
+    errBox.classList.add("visible");
+    return;
+  }
+
+  const btn = document.getElementById("submit-new-topic");
+  btn.disabled = true;
+  btn.textContent = "Paylaşılıyor...";
+
+  const { error } = await supabaseClient.from("forum_konular").insert({
+    kategori_id: currentCategoryId,
+    yazan_id: currentSession.user.id,
+    baslik: baslik,
+    icerik: icerik,
+  });
+
+  btn.disabled = false;
+  btn.textContent = "Konuyu Paylaş";
+
+  if (error) {
+    errBox.textContent = "Hata: " + error.message;
+    errBox.classList.add("visible");
+    return;
+  }
+
+  document.getElementById("new-topic-form-wrap").innerHTML = "";
+  await loadTopics();
+}
+
+async function loadTopics() {
+  const list = document.getElementById("topic-list");
+  list.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
+
+  const { data, error } = await supabaseClient
+    .from("forum_konular")
+    .select("*, kullanici_profilleri(kullanici_adi)")
+    .eq("kategori_id", currentCategoryId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data || data.length === 0) {
+    list.innerHTML = '<div class="empty-state">Bu kategoride henüz konu yok. İlk konuyu sen aç!</div>';
+    return;
+  }
+
+  list.innerHTML = "";
+  data.forEach(konu => {
+    const card = document.createElement("div");
+    card.className = "topic-card";
+    const yazan = konu.kullanici_profilleri ? konu.kullanici_profilleri.kullanici_adi : "bilinmiyor";
+    const tarih = new Date(konu.created_at).toLocaleDateString("tr-TR");
+    card.innerHTML = `<div class="topic-title">${konu.baslik}</div><div class="topic-meta">${yazan} · ${tarih}</div>`;
+    card.addEventListener("click", () => openTopic(konu.id));
+    list.appendChild(card);
+  });
+}
+
+async function openTopic(id) {
+  currentTopicId = id;
+  showView("view-topic-detail");
+
+  const { data: konu, error } = await supabaseClient
+    .from("forum_konular")
+    .select("*, kullanici_profilleri(kullanici_adi)")
+    .eq("id", id)
+    .single();
+
+  const detailCard = document.getElementById("topic-detail-card");
+  if (error || !konu) {
+    detailCard.innerHTML = '<div class="empty-state">Konu yüklenemedi.</div>';
+    return;
+  }
+
+  const yazan = konu.kullanici_profilleri ? konu.kullanici_profilleri.kullanici_adi : "bilinmiyor";
+  const tarih = new Date(konu.created_at).toLocaleDateString("tr-TR");
+  detailCard.innerHTML = `
+    <div class="topic-detail-title">${konu.baslik}</div>
+    <div class="topic-detail-meta">${yazan} · ${tarih}</div>
+    <div class="topic-detail-body">${konu.icerik}</div>
+  `;
+
+  await loadComments();
+  renderCommentForm();
+}
+
+async function loadComments() {
+  const list = document.getElementById("comment-list");
+  list.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
+
+  const { data, error } = await supabaseClient
+    .from("forum_yorumlar")
+    .select("*, kullanici_profilleri(kullanici_adi)")
+    .eq("konu_id", currentTopicId)
+    .order("created_at", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    list.innerHTML = '<div class="empty-state">Henüz yorum yok.</div>';
+    return;
+  }
+
+  list.innerHTML = "";
+  data.forEach(yorum => {
+    const card = document.createElement("div");
+    card.className = "comment-card";
+    const yazan = yorum.kullanici_profilleri ? yorum.kullanici_profilleri.kullanici_adi : "bilinmiyor";
+    const tarih = new Date(yorum.created_at).toLocaleDateString("tr-TR");
+    card.innerHTML = `<div class="comment-meta">${yazan} · ${tarih}</div><div class="comment-body">${yorum.icerik}</div>`;
+    list.appendChild(card);
+  });
+}
+
+function renderCommentForm() {
+  const area = document.getElementById("comment-form-area");
+  if (!currentSession) {
+    area.innerHTML = `<div class="login-prompt">Yorum yapmak için <a href="/giris">giriş yapman</a> gerekiyor.</div>`;
+    return;
+  }
+  area.innerHTML = `
+    <div class="form-card">
+      <div class="field"><label>Yorumun</label><textarea id="new-comment-icerik"></textarea></div>
+      <button class="submit-btn" id="submit-comment">Yorum Yap</button>
+      <div class="error-box" id="comment-error"></div>
+    </div>
+  `;
+  document.getElementById("submit-comment").addEventListener("click", submitComment);
+}
+
+async function submitComment() {
+  const icerik = document.getElementById("new-comment-icerik").value.trim();
+  const errBox = document.getElementById("comment-error");
+
+  if (!icerik) {
+    errBox.textContent = "Yorum boş olamaz.";
+    errBox.classList.add("visible");
+    return;
+  }
+
+  const btn = document.getElementById("submit-comment");
+  btn.disabled = true;
+  btn.textContent = "Gönderiliyor...";
+
+  const { error } = await supabaseClient.from("forum_yorumlar").insert({
+    konu_id: currentTopicId,
+    yazan_id: currentSession.user.id,
+    icerik: icerik,
+  });
+
+  btn.disabled = false;
+  btn.textContent = "Yorum Yap";
+
+  if (error) {
+    errBox.textContent = "Hata: " + error.message;
+    errBox.classList.add("visible");
+    return;
+  }
+
+  document.getElementById("new-comment-icerik").value = "";
+  await loadComments();
+}
+
+document.getElementById("back-to-categories").addEventListener("click", () => showView("view-categories"));
+document.getElementById("back-to-topics").addEventListener("click", () => showView("view-topics"));
+
+(async function init() {
+  await initSession();
+  await loadCategories();
+})();
+</script>
+</body>
+</html>
