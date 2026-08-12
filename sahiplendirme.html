@@ -48,8 +48,39 @@
   .form-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
   label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
-  input, textarea { width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
-  input:focus, textarea:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+  input, textarea, select {
+    width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink);
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+  select {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2354655D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; cursor: pointer;
+  }
+
+  .photo-upload-row { display: flex; align-items: center; gap: 12px; }
+  .photo-upload-btn {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--teal); cursor: pointer; font-family: inherit;
+  }
+  .photo-upload-btn:hover { border-color: var(--teal-bright); }
+  .photo-preview-thumb { display: none; align-items: center; gap: 10px; }
+  .photo-preview-thumb.visible { display: flex; }
+  .photo-preview-thumb img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+  .photo-preview-thumb button { background: none; border: none; color: var(--acil); font-size: 13px; cursor: pointer; font-family: inherit; }
+  .photo-upload-hint { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
+
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    max-height: 220px; overflow-y: auto; display: none;
+    box-shadow: 0 8px 20px rgba(20, 35, 31, 0.12);
+  }
+  .autocomplete-list.visible { display: block; }
+  .autocomplete-item { padding: 9px 13px; font-size: 14px; cursor: pointer; color: var(--ink); }
+  .autocomplete-item:hover { background: var(--teal-soft); }
   textarea { min-height: 90px; resize: vertical; }
   .field { margin-bottom: 14px; }
   .submit-btn { width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 6px; }
@@ -155,7 +186,10 @@
       </div>
       <div class="filter-group">
         <div class="filter-group-label">Konum</div>
-        <input type="text" class="filter-konum-input" id="filter-konum" placeholder="Şehir/ilçe ara (örn: Afyon)">
+        <div class="autocomplete-wrap">
+          <input type="text" class="filter-konum-input" id="filter-konum" placeholder="Şehir yaz veya seç" autocomplete="off">
+          <div class="autocomplete-list" id="filter-konum-list"></div>
+        </div>
       </div>
     </div>
     <div class="listing-grid" id="listing-grid"><div class="empty-state">Yükleniyor...</div></div>
@@ -174,6 +208,41 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentSession = null;
 let allListings = [];
 let activeFilters = { ilanTuru: "tumu", tur: "tumu", yas: "tumu", konum: "" };
+
+const TURKISH_CITIES = [
+  "Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın",
+  "Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa",
+  "Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum",
+  "Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir",
+  "Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kırıkkale","Kırklareli","Kırşehir","Kilis",
+  "Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir",
+  "Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Şanlıurfa",
+  "Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak",
+].sort((a, b) => a.localeCompare(b, "tr"));
+
+function setupCityAutocomplete(inputEl, listEl, onSelect) {
+  function render() {
+    const q = inputEl.value.trim();
+    if (!q) { listEl.classList.remove("visible"); listEl.innerHTML = ""; return; }
+    const qLower = q.toLocaleLowerCase("tr-TR");
+    const matches = TURKISH_CITIES.filter(c => c.toLocaleLowerCase("tr-TR").startsWith(qLower)).slice(0, 8);
+    if (matches.length === 0) { listEl.classList.remove("visible"); listEl.innerHTML = ""; return; }
+    listEl.innerHTML = matches.map(c => `<div class="autocomplete-item" data-val="${c}">${c}</div>`).join("");
+    listEl.classList.add("visible");
+    listEl.querySelectorAll(".autocomplete-item").forEach(item => {
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        inputEl.value = item.dataset.val;
+        listEl.classList.remove("visible");
+        listEl.innerHTML = "";
+        if (onSelect) onSelect(item.dataset.val);
+      });
+    });
+  }
+  inputEl.addEventListener("input", render);
+  inputEl.addEventListener("focus", render);
+  inputEl.addEventListener("blur", () => setTimeout(() => listEl.classList.remove("visible"), 120));
+}
 
 async function initSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
@@ -206,13 +275,26 @@ function renderEkleArea() {
       </div>
       <div class="row">
         <div class="field"><label for="hayvan_adi">Hayvanın adı</label><input type="text" id="hayvan_adi" placeholder="Örn: Boncuk"></div>
-        <div class="field"><label for="tur">Tür</label><input type="text" id="tur" placeholder="köpek, kedi..."></div>
+        <div class="field">
+          <label for="tur">Tür</label>
+          <select id="tur">
+            <option value="">Seç</option>
+            <option value="Köpek">Köpek</option>
+            <option value="Kedi">Kedi</option>
+            <option value="Kuş">Kuş</option>
+            <option value="Tavşan">Tavşan</option>
+            <option value="Kemirgen">Kemirgen (hamster, vb.)</option>
+            <option value="Balık">Balık</option>
+            <option value="Sürüngen">Sürüngen</option>
+            <option value="Diğer">Diğer</option>
+          </select>
+        </div>
       </div>
       <div class="row">
         <div class="field">
-          <label for="yas">Yaş (opsiyonel)</label>
+          <label for="yas">Yaş</label>
           <select id="yas">
-            <option value="">Seçilmedi</option>
+            <option value="">Seç</option>
             <option value="0-6 ay">0-6 ay</option>
             <option value="6 ay - 1 yaş">6 ay - 1 yaş</option>
             <option value="1-3 yaş">1-3 yaş</option>
@@ -220,12 +302,34 @@ function renderEkleArea() {
             <option value="5+ yaş">5+ yaş</option>
           </select>
         </div>
-        <div class="field"><label for="cinsiyet">Cinsiyet (opsiyonel)</label><input type="text" id="cinsiyet" placeholder="dişi / erkek"></div>
+        <div class="field">
+          <label for="cinsiyet">Cinsiyet</label>
+          <select id="cinsiyet">
+            <option value="">Seç</option>
+            <option value="Dişi">Dişi</option>
+            <option value="Erkek">Erkek</option>
+            <option value="Bilinmiyor">Bilinmiyor</option>
+          </select>
+        </div>
       </div>
       <div class="field"><label for="aciklama">Açıklama</label><textarea id="aciklama" placeholder="Karakteri, sağlık durumu, neden sahiplendirildiği..."></textarea></div>
-      <div class="field"><label for="fotograf_url">Fotoğraf linki (opsiyonel)</label><input type="text" id="fotograf_url" placeholder="https://..."></div>
+      <div class="field">
+        <label>Fotoğraf (opsiyonel)</label>
+        <div class="photo-upload-row">
+          <button type="button" class="photo-upload-btn" id="photo-upload-btn">📷 Fotoğraf Seç</button>
+          <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
+          <div class="photo-preview-thumb" id="photo-preview-thumb"></div>
+        </div>
+        <div class="photo-upload-hint">JPG/PNG, max 5MB</div>
+      </div>
       <div class="row">
-        <div class="field"><label for="konum">Konum</label><input type="text" id="konum" placeholder="Afyonkarahisar"></div>
+        <div class="field">
+          <label for="konum">Konum</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="konum" placeholder="Şehir yaz veya seç" autocomplete="off">
+            <div class="autocomplete-list" id="konum-autocomplete-list"></div>
+          </div>
+        </div>
         <div class="field"><label for="iletisim">İletişim (telefon/whatsapp)</label><input type="text" id="iletisim" placeholder="05xx xxx xx xx"></div>
       </div>
       <button class="submit-btn" id="submit-btn">İlanı Gönder</button>
@@ -242,26 +346,58 @@ function renderEkleArea() {
     });
   });
 
-  document.getElementById("submit-btn").addEventListener("click", () => submitIlan(seciliIlanTuru));
+  let secilenFotografDosyasi = null;
+  const photoUploadBtn = document.getElementById("photo-upload-btn");
+  const photoFileInput = document.getElementById("photo-file-input");
+  const photoPreviewThumb = document.getElementById("photo-preview-thumb");
+
+  photoUploadBtn.addEventListener("click", () => photoFileInput.click());
+
+  photoFileInput.addEventListener("change", () => {
+    const file = photoFileInput.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Fotoğraf çok büyük (max 5MB).");
+      photoFileInput.value = "";
+      return;
+    }
+    secilenFotografDosyasi = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      photoPreviewThumb.innerHTML = `
+        <img src="${reader.result}" alt="Seçilen fotoğraf">
+        <button type="button" id="remove-photo-btn">Kaldır</button>
+      `;
+      photoPreviewThumb.classList.add("visible");
+      document.getElementById("remove-photo-btn").addEventListener("click", () => {
+        secilenFotografDosyasi = null;
+        photoFileInput.value = "";
+        photoPreviewThumb.classList.remove("visible");
+        photoPreviewThumb.innerHTML = "";
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById("submit-btn").addEventListener("click", () => submitIlan(seciliIlanTuru, secilenFotografDosyasi));
+
+  setupCityAutocomplete(
+    document.getElementById("konum"),
+    document.getElementById("konum-autocomplete-list")
+  );
 }
 
-async function submitIlan(ilanTuru) {
-  const payload = {
-    hayvan_adi: document.getElementById("hayvan_adi").value.trim(),
-    tur: document.getElementById("tur").value.trim(),
-    yas: document.getElementById("yas").value || null,
-    cinsiyet: document.getElementById("cinsiyet").value.trim() || null,
-    aciklama: document.getElementById("aciklama").value.trim(),
-    fotograf_url: document.getElementById("fotograf_url").value.trim() || null,
-    konum: document.getElementById("konum").value.trim(),
-    iletisim: document.getElementById("iletisim").value.trim(),
-    ilan_sahibi_id: currentSession.user.id,
-    ilan_turu: ilanTuru,
-    durum: "beklemede",
-  };
+async function submitIlan(ilanTuru, fotografDosyasi) {
+  const hayvan_adi = document.getElementById("hayvan_adi").value.trim();
+  const tur = document.getElementById("tur").value;
+  const yas = document.getElementById("yas").value;
+  const cinsiyet = document.getElementById("cinsiyet").value || null;
+  const aciklama = document.getElementById("aciklama").value.trim();
+  const konum = document.getElementById("konum").value.trim();
+  const iletisim = document.getElementById("iletisim").value.trim();
 
-  if (!payload.hayvan_adi || !payload.tur || !payload.aciklama || !payload.konum || !payload.iletisim) {
-    alert("Lütfen zorunlu alanları doldur: hayvan adı, tür, açıklama, konum, iletişim.");
+  if (!hayvan_adi || !tur || !yas || !aciklama || !konum || !iletisim) {
+    alert("Lütfen zorunlu alanları doldur: hayvan adı, tür, yaş, açıklama, konum, iletişim.");
     return;
   }
 
@@ -269,8 +405,39 @@ async function submitIlan(ilanTuru) {
   const successBox = document.getElementById("success-box");
   const errorBox = document.getElementById("error-box");
 
-  btn.disabled = true; btn.textContent = "Gönderiliyor...";
+  btn.disabled = true;
   successBox.classList.remove("visible"); errorBox.classList.remove("visible");
+
+  let fotograf_url = null;
+
+  if (fotografDosyasi) {
+    btn.textContent = "Fotoğraf yükleniyor...";
+    const uzanti = fotografDosyasi.name.split(".").pop();
+    const dosyaYolu = `${currentSession.user.id}/${Date.now()}.${uzanti}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from("ilan-fotograflari")
+      .upload(dosyaYolu, fotografDosyasi);
+
+    if (uploadError) {
+      btn.disabled = false; btn.textContent = "İlanı Gönder";
+      errorBox.textContent = "Fotoğraf yüklenemedi: " + uploadError.message;
+      errorBox.classList.add("visible");
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage.from("ilan-fotograflari").getPublicUrl(dosyaYolu);
+    fotograf_url = publicUrlData.publicUrl;
+  }
+
+  btn.textContent = "Gönderiliyor...";
+
+  const payload = {
+    hayvan_adi, tur, yas, cinsiyet, aciklama, fotograf_url, konum, iletisim,
+    ilan_sahibi_id: currentSession.user.id,
+    ilan_turu: ilanTuru,
+    durum: "beklemede",
+  };
 
   const { error } = await supabaseClient.from("sahiplendirme_ilanlari").insert(payload);
 
@@ -280,7 +447,9 @@ async function submitIlan(ilanTuru) {
 
   successBox.textContent = "İlanınız alındı, onaylandıktan sonra listede görünecek.";
   successBox.classList.add("visible");
-  document.querySelectorAll("#panel-ekle input, #panel-ekle textarea").forEach(el => el.value = "");
+  document.querySelectorAll("#panel-ekle input, #panel-ekle textarea, #panel-ekle select").forEach(el => el.value = "");
+  document.getElementById("photo-preview-thumb").classList.remove("visible");
+  document.getElementById("photo-preview-thumb").innerHTML = "";
 }
 
 async function loadListings() {
@@ -382,6 +551,12 @@ document.getElementById("filter-konum").addEventListener("input", (e) => {
   activeFilters.konum = e.target.value;
   renderFilteredListings();
 });
+
+setupCityAutocomplete(
+  document.getElementById("filter-konum"),
+  document.getElementById("filter-konum-list"),
+  (val) => { activeFilters.konum = val; renderFilteredListings(); }
+);
 
 const tabButtons = document.querySelectorAll(".tab-btn");
 const panels = document.querySelectorAll(".panel");
