@@ -3,97 +3,107 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Veteriner & Petshop Rehberi</title>
+<title>Veteriner &amp; Petshop Rehberi — Pati Sağlık</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --paper: #F5F7F6;
-    --card: #FFFFFF;
-    --ink: #1F2E2C;
-    --ink-soft: #52625F;
-    --teal: #1F4B47;
-    --teal-soft: #E4ECEA;
-    --line: #DDE5E2;
-    --gozlemle: #3E7C74;
-    --gozlemle-bg: #E7F1EF;
+    --paper: #F1F7F4; --card: #FFFFFF; --ink: #14231F; --ink-soft: #54655D; --ink-faint: #8A9C92;
+    --teal: #0B6E6C; --teal-bright: #12968F; --teal-soft: #E1F0EE;
+    --green: #6E9B37; --green-soft: #EAF3E1;
+    --line: #DCE7E0; --acil: #B8433A; --acil-bg: #FBEAE8;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    padding: 40px 20px 60px;
-  }
-  .wrap { width: 100%; max-width: 680px; }
-  .eyebrow {
-    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--teal); font-weight: 600; margin-bottom: 8px;
-  }
-  h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; margin: 0 0 6px; }
-  .sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 24px; }
-  .back-link {
-    display: inline-block; font-size: 13px; color: var(--teal); text-decoration: none;
-    margin-bottom: 16px; font-weight: 600;
-  }
-  .search-card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 20px; margin-bottom: 20px;
-  }
-  .search-row { display: flex; gap: 10px; margin-bottom: 12px; }
-  .search-row input {
-    flex: 1; font-family: inherit; font-size: 15px; padding: 11px 13px;
-    border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
-  }
-  .toggle-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .toggle-btn {
-    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--line);
-    background: var(--paper); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
-    color: var(--ink-soft);
-  }
-  .toggle-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
-  .search-card button.search-submit {
-    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 8px;
-    padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
-  }
-  .search-card button.search-submit:hover { background: #163936; }
-  .search-card button.search-submit:disabled { background: #9AAEAB; cursor: wait; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
-  .source-note {
-    font-size: 11.5px; color: var(--ink-soft); text-align: center; margin-top: 8px;
+  .navbar { position: sticky; top: 0; z-index: 20; background: rgba(241, 247, 244, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .navbar-inner { max-width: 980px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+  .brand-mark { width: 26px; height: 26px; flex-shrink: 0; }
+  .brand-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; color: var(--teal); letter-spacing: -0.01em; }
+  .nav-links { display: flex; align-items: center; gap: 22px; }
+  .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
+  .nav-links a:hover, .nav-links a.current { color: var(--teal); }
+  .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .nav-auth .who { color: var(--ink); font-weight: 600; }
+  .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
+  @media (max-width: 620px) { .nav-links { display: none; } }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 36px 24px 60px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; }
+  h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; margin: 0 0 6px; color: var(--teal); }
+  .sub { color: var(--ink-soft); font-size: 14.5px; line-height: 1.55; max-width: 54ch; margin: 0 0 24px; }
+
+  .search-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 22px; }
+  .toggle-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .toggle-btn { flex: 1; padding: 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink-soft); }
+  .toggle-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+  .locate-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--teal-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
   }
+  .locate-text { font-size: 13px; color: var(--ink-soft); flex: 1; line-height: 1.4; }
+  .locate-btn {
+    flex-shrink: 0; background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 9px 14px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap;
+  }
+  .locate-btn:hover { background: var(--teal-bright); }
+  .locate-btn:disabled { background: var(--ink-faint); cursor: wait; }
+
+  .divider-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; }
+  .divider-row .line { flex: 1; height: 1px; background: var(--line); }
+  .divider-row span { font-size: 11.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .search-row input { flex: 1; font-family: inherit; font-size: 15px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+  .search-row input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+  button.search-submit { width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  button.search-submit:hover { background: var(--teal-bright); }
+  button.search-submit:disabled { background: var(--ink-faint); cursor: wait; }
+  .source-note { font-size: 11.5px; color: var(--ink-faint); text-align: center; margin-top: 10px; }
 
   .results { display: flex; flex-direction: column; gap: 10px; }
-  .place-card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    padding: 16px 18px;
-  }
+  .results-heading { font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 10px; }
+  .place-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
   .place-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
   .place-addr { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
-  .place-meta { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+  .place-meta { display: flex; align-items: center; gap: 10px; font-size: 12.5px; flex-wrap: wrap; }
   .place-rating { color: var(--teal); font-weight: 600; }
-  .place-open { padding: 2px 8px; border-radius: 100px; background: var(--gozlemle-bg); color: var(--gozlemle); font-weight: 600; }
-  .place-link { margin-left: auto; color: var(--teal); text-decoration: none; font-weight: 600; }
+  .place-open { padding: 3px 9px; border-radius: 100px; background: var(--green-soft); color: #3F5A22; font-weight: 600; }
+  .place-closed { padding: 3px 9px; border-radius: 100px; background: var(--acil-bg); color: var(--acil); font-weight: 600; }
+  .place-link { margin-left: auto; color: var(--teal-bright); text-decoration: none; font-weight: 600; }
 
-  .empty-state { text-align: center; color: var(--ink-soft); font-size: 14px; padding: 30px 0; }
-  .error-box {
-    display: none; background: #FBEAE8; color: #B8433A; border-radius: 8px;
-    padding: 12px; font-size: 13px; margin-bottom: 16px;
-  }
+  .empty-state { text-align: center; color: var(--ink-faint); font-size: 14px; padding: 34px 20px; background: var(--card); border: 1px dashed var(--line); border-radius: 14px; }
+  .error-box { display: none; background: var(--acil-bg); color: var(--acil); border-radius: 10px; padding: 12px; font-size: 13px; margin-bottom: 16px; }
   .error-box.visible { display: block; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <a href="/" class="back-link">← Sohbete geri dön</a>
 
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+        <path d="M6 18C6 13 10 9 16 9C22 9 26 13 26 18C26 23 21 26 16 26C11 26 6 23 6 18Z" stroke="#0B6E6C" stroke-width="2"/>
+        <path d="M11 16L14 20L16 15L18 20L21 16" stroke="#6E9B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">Pati Sağlık</span>
+    </a>
+    <div class="nav-links">
+      <a href="/rehber" class="current">Veteriner &amp; petshop</a>
+      <a href="/sahiplendir">Sahiplendirme</a>
+      <a href="/forum">Forum</a>
+    </div>
+    <div class="nav-auth" id="nav-auth"></div>
+  </div>
+</nav>
+
+<div class="wrap">
   <div class="eyebrow">Rehber</div>
   <h1>Yakınında veteriner ve petshop bul</h1>
-  <p class="sub">Şehir/ilçe yaz, listeye bak.</p>
+  <p class="sub">Konumunu paylaş ya da bir şehir/ilçe yaz — sana en yakın veteriner klinikleri ve petshoplar listelensin.</p>
 
   <div class="error-box" id="error-box"></div>
 
@@ -102,108 +112,154 @@
       <button type="button" class="toggle-btn active" id="btn-vet" data-tur="veteriner">🏥 Veteriner</button>
       <button type="button" class="toggle-btn" id="btn-pet" data-tur="petshop">🛍️ Petshop</button>
     </div>
-    <div class="search-row">
-      <input type="text" id="konum-input" placeholder="Şehir/ilçe (örn: Afyonkarahisar)">
+
+    <div class="locate-row">
+      <span class="locate-text">📍 Telefonundaki konumu kullanarak en yakın sonuçları göster</span>
+      <button class="locate-btn" id="locate-btn">Konumumu kullan</button>
     </div>
+
+    <div class="divider-row"><div class="line"></div><span>ya da</span><div class="line"></div></div>
+
+    <div class="search-row"><input type="text" id="konum-input" placeholder="Şehir/ilçe (örn: Afyonkarahisar)"></div>
     <button class="search-submit" id="search-btn">Ara</button>
     <div class="source-note" id="source-note"></div>
   </div>
 
   <div class="results" id="results">
-    <div class="empty-state">Aramak için yukarıya bir konum yaz.</div>
+    <div class="empty-state">Aramak için konumunu paylaş ya da yukarıya bir şehir/ilçe yaz.</div>
   </div>
 </div>
 
 <script>
 const API_URL = "http://localhost:8000/nearby";
-let seciliTur = "veteriner";
+const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+async function initSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const el = document.getElementById("nav-auth");
+  if (session) {
+    const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi").eq("id", session.user.id).single();
+    const username = profile ? profile.kullanici_adi : session.user.email;
+    el.innerHTML = `<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+    document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
+  } else {
+    el.innerHTML = `<a href="/giris">Giriş yap</a>`;
+  }
+}
+initSession();
+
+let seciliTur = "veteriner";
 const btnVet = document.getElementById("btn-vet");
 const btnPet = document.getElementById("btn-pet");
 const konumInput = document.getElementById("konum-input");
 const searchBtn = document.getElementById("search-btn");
+const locateBtn = document.getElementById("locate-btn");
 const resultsDiv = document.getElementById("results");
 const errorBox = document.getElementById("error-box");
 const sourceNote = document.getElementById("source-note");
 
 btnVet.addEventListener("click", () => selectTur("veteriner"));
 btnPet.addEventListener("click", () => selectTur("petshop"));
-
 function selectTur(tur) {
   seciliTur = tur;
   btnVet.classList.toggle("active", tur === "veteriner");
   btnPet.classList.toggle("active", tur === "petshop");
 }
 
-konumInput.addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
-searchBtn.addEventListener("click", search);
+konumInput.addEventListener("keydown", (e) => { if (e.key === "Enter") search(konumInput.value.trim()); });
+searchBtn.addEventListener("click", () => search(konumInput.value.trim()));
 
-async function search() {
-  const konum = konumInput.value.trim();
-  if (!konum) {
-    alert("Lütfen bir şehir/ilçe yaz.");
+locateBtn.addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    showError("Tarayıcın konum erişimini desteklemiyor.");
     return;
   }
 
-  searchBtn.disabled = true;
-  searchBtn.textContent = "Aranıyor...";
-  errorBox.classList.remove("visible");
-  resultsDiv.innerHTML = "";
+  locateBtn.disabled = true;
+  locateBtn.textContent = "Konum alınıyor...";
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=tr`);
+        const data = await res.json();
+        const adr = data.address || {};
+        const yer = adr.town || adr.city || adr.county || adr.state || adr.suburb || "";
+
+        if (!yer) {
+          showError("Konumun bir yere çözümlenemedi, lütfen şehir/ilçe yazarak dene.");
+          return;
+        }
+
+        konumInput.value = yer;
+        await search(yer);
+      } catch (err) {
+        showError("Konum bulundu ama yer adına çevrilemedi. Lütfen şehir/ilçe yazarak dene.");
+      } finally {
+        locateBtn.disabled = false;
+        locateBtn.textContent = "Konumumu kullan";
+      }
+    },
+    () => {
+      showError("Konum izni verilmedi ya da alınamadı. Lütfen şehir/ilçe yazarak dene.");
+      locateBtn.disabled = false;
+      locateBtn.textContent = "Konumumu kullan";
+    }
+  );
+});
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.add("visible");
+}
+
+async function search(konum) {
+  if (!konum) { alert("Lütfen bir şehir/ilçe yaz ya da konumunu paylaş."); return; }
+
+  searchBtn.disabled = true; searchBtn.textContent = "Aranıyor...";
+  errorBox.classList.remove("visible"); resultsDiv.innerHTML = "";
 
   try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ konum: konum, tur: seciliTur })
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => null);
-      throw new Error(errData?.detail || `Sunucu hatası (${res.status})`);
-    }
-
+    const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ konum, tur: seciliTur }) });
+    if (!res.ok) { const errData = await res.json().catch(() => null); throw new Error(errData?.detail || `Sunucu hatası (${res.status})`); }
     const data = await res.json();
-    renderResults(data);
-
+    renderResults(data, konum);
   } catch (err) {
-    errorBox.textContent = "Bir sorun oluştu: " + err.message;
-    errorBox.classList.add("visible");
+    showError("Bir sorun oluştu: " + err.message);
     resultsDiv.innerHTML = '<div class="empty-state">Sonuç gösterilemedi.</div>';
   } finally {
-    searchBtn.disabled = false;
-    searchBtn.textContent = "Ara";
+    searchBtn.disabled = false; searchBtn.textContent = "Ara";
   }
 }
 
-function renderResults(data) {
+function renderResults(data, konum) {
   sourceNote.textContent = data.kaynak === "mock"
     ? "Şu an sahte (mock) veri gösteriliyor — gerçek sonuçlar için GOOGLE_PLACES_API_KEY gerekir."
     : "Google Places verisi";
 
   if (!data.sonuclar || data.sonuclar.length === 0) {
-    resultsDiv.innerHTML = '<div class="empty-state">Sonuç bulunamadı, farklı bir konum dene.</div>';
+    resultsDiv.innerHTML = '<div class="empty-state">Bu bölgede sonuç bulunamadı, farklı bir konum dene.</div>';
     return;
   }
 
-  resultsDiv.innerHTML = "";
+  const turAdi = seciliTur === "veteriner" ? "veteriner" : "petshop";
+  resultsDiv.innerHTML = `<div class="results-heading">${konum} yakınında ${data.sonuclar.length} ${turAdi}</div>`;
+
   data.sonuclar.forEach(place => {
     const card = document.createElement("div");
     card.className = "place-card";
-
     let metaHtml = "";
     if (place.puan) {
       metaHtml += `<span class="place-rating">★ ${place.puan}</span>`;
       if (place.puan_sayisi) metaHtml += `<span>(${place.puan_sayisi} değerlendirme)</span>`;
     }
     if (place.acik_mi === true) metaHtml += `<span class="place-open">Açık</span>`;
-    if (place.acik_mi === false) metaHtml += `<span class="place-open" style="background:#FBEAE8;color:#B8433A;">Kapalı</span>`;
+    if (place.acik_mi === false) metaHtml += `<span class="place-closed">Kapalı</span>`;
     if (place.harita_linki) metaHtml += `<a href="${place.harita_linki}" target="_blank" class="place-link">Haritada gör →</a>`;
-
-    card.innerHTML = `
-      <div class="place-name">${place.isim}</div>
-      <div class="place-addr">${place.adres}</div>
-      <div class="place-meta">${metaHtml}</div>
-    `;
+    card.innerHTML = `<div class="place-name">${place.isim}</div><div class="place-addr">${place.adres}</div><div class="place-meta">${metaHtml}</div>`;
     resultsDiv.appendChild(card);
   });
 }

@@ -3,70 +3,79 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Giriş / Kayıt</title>
+<title>Giriş / Kayıt — Pati Sağlık</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --paper: #F5F7F6; --card: #FFFFFF; --ink: #1F2E2C; --ink-soft: #52625F;
-    --teal: #1F4B47; --teal-soft: #E4ECEA; --line: #DDE5E2;
-    --acil: #B8433A; --acil-bg: #FBEAE8; --gozlemle: #3E7C74; --gozlemle-bg: #E7F1EF;
+    --paper: #F1F7F4; --card: #FFFFFF; --ink: #14231F; --ink-soft: #54655D; --ink-faint: #8A9C92;
+    --teal: #0B6E6C; --teal-bright: #12968F; --teal-soft: #E1F0EE;
+    --green: #6E9B37; --green-soft: #EAF3E1;
+    --line: #DCE7E0; --acil: #B8433A; --acil-bg: #FBEAE8;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--paper); color: var(--ink);
-    font-family: 'Inter', sans-serif; min-height: 100vh;
-    display: flex; justify-content: center; align-items: flex-start; padding: 60px 20px;
-  }
-  .wrap { width: 100%; max-width: 420px; }
-  .back-link {
-    display: inline-block; font-size: 13px; color: var(--teal); text-decoration: none;
-    margin-bottom: 16px; font-weight: 600;
-  }
-  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); font-weight: 600; margin-bottom: 8px; }
-  h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; margin: 0 0 20px; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .navbar { position: sticky; top: 0; z-index: 20; background: rgba(241, 247, 244, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .navbar-inner { max-width: 980px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+  .brand-mark { width: 26px; height: 26px; flex-shrink: 0; }
+  .brand-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; color: var(--teal); letter-spacing: -0.01em; }
+  .nav-links { display: flex; align-items: center; gap: 22px; }
+  .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
+  .nav-links a:hover { color: var(--teal); }
+  @media (max-width: 620px) { .nav-links { display: none; } }
+
+  .wrap { max-width: 420px; margin: 0 auto; padding: 60px 20px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; }
+  h1 { font-family: 'Fraunces', serif; font-size: 27px; font-weight: 600; margin: 0 0 22px; color: var(--teal); }
 
   .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-  .tab-btn {
-    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--line);
-    background: var(--card); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
-    color: var(--ink-soft);
-  }
+  .tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink-soft); }
   .tab-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
 
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 26px; }
   .panel { display: none; }
   .panel.active { display: block; }
   .field { margin-bottom: 14px; }
   label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
-  input {
-    width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px;
-    border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink);
-  }
-  button.submit {
-    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 8px;
-    padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 6px;
-  }
-  button.submit:hover { background: #163936; }
-  button.submit:disabled { background: #9AAEAB; cursor: wait; }
+  input { width: 100%; font-family: inherit; font-size: 15px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
+  input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+  button.submit { width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 6px; }
+  button.submit:hover { background: var(--teal-bright); }
+  button.submit:disabled { background: var(--ink-faint); cursor: wait; }
 
-  .msg-box { display: none; border-radius: 8px; padding: 12px; font-size: 13px; margin-top: 14px; line-height: 1.5; }
-  .msg-box.success { display: block; background: var(--gozlemle-bg); color: var(--gozlemle); }
+  .msg-box { display: none; border-radius: 10px; padding: 12px; font-size: 13px; margin-top: 14px; line-height: 1.5; }
+  .msg-box.success { display: block; background: var(--green-soft); color: #3F5A22; }
   .msg-box.error { display: block; background: var(--acil-bg); color: var(--acil); }
 
-  .logged-in-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; text-align: center; }
-  .logged-in-card .username { font-weight: 600; font-size: 18px; margin-bottom: 6px; }
+  .logged-in-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 26px; text-align: center; }
+  .logged-in-card .username { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; margin-bottom: 6px; color: var(--teal); }
   .logged-in-card .email { color: var(--ink-soft); font-size: 13px; margin-bottom: 20px; }
-  .logout-btn {
-    background: var(--acil-bg); color: var(--acil); border: none; border-radius: 8px;
-    padding: 11px 20px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
-  }
+  .logout-btn { background: var(--acil-bg); color: var(--acil); border: none; border-radius: 10px; padding: 11px 20px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
 </style>
 </head>
 <body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+        <path d="M6 18C6 13 10 9 16 9C22 9 26 13 26 18C26 23 21 26 16 26C11 26 6 23 6 18Z" stroke="#0B6E6C" stroke-width="2"/>
+        <path d="M11 16L14 20L16 15L18 20L21 16" stroke="#6E9B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">Pati Sağlık</span>
+    </a>
+    <div class="nav-links">
+      <a href="/rehber">Veteriner &amp; petshop</a>
+      <a href="/sahiplendir">Sahiplendirme</a>
+      <a href="/forum">Forum</a>
+    </div>
+  </div>
+</nav>
+
 <div class="wrap">
-  <a href="/" class="back-link">← Ana sayfaya dön</a>
   <div class="eyebrow">Hesap</div>
   <h1>Giriş yap veya kayıt ol</h1>
 
@@ -78,14 +87,8 @@
 
     <div class="panel active" id="panel-login">
       <div class="card">
-        <div class="field">
-          <label for="login-email">E-posta</label>
-          <input type="email" id="login-email" placeholder="ornek@mail.com">
-        </div>
-        <div class="field">
-          <label for="login-password">Şifre</label>
-          <input type="password" id="login-password" placeholder="••••••••">
-        </div>
+        <div class="field"><label for="login-email">E-posta</label><input type="email" id="login-email" placeholder="ornek@mail.com"></div>
+        <div class="field"><label for="login-password">Şifre</label><input type="password" id="login-password" placeholder="••••••••"></div>
         <button class="submit" id="login-btn">Giriş Yap</button>
         <div class="msg-box" id="login-msg"></div>
       </div>
@@ -93,18 +96,9 @@
 
     <div class="panel" id="panel-signup">
       <div class="card">
-        <div class="field">
-          <label for="signup-username">Kullanıcı adı</label>
-          <input type="text" id="signup-username" placeholder="örn: selim_ozk">
-        </div>
-        <div class="field">
-          <label for="signup-email">E-posta</label>
-          <input type="email" id="signup-email" placeholder="ornek@mail.com">
-        </div>
-        <div class="field">
-          <label for="signup-password">Şifre (en az 6 karakter)</label>
-          <input type="password" id="signup-password" placeholder="••••••••">
-        </div>
+        <div class="field"><label for="signup-username">Kullanıcı adı</label><input type="text" id="signup-username" placeholder="örn: selim_ozk"></div>
+        <div class="field"><label for="signup-email">E-posta</label><input type="email" id="signup-email" placeholder="ornek@mail.com"></div>
+        <div class="field"><label for="signup-password">Şifre (en az 6 karakter)</label><input type="password" id="signup-password" placeholder="••••••••"></div>
         <button class="submit" id="signup-btn">Kayıt Ol</button>
         <div class="msg-box" id="signup-msg"></div>
       </div>
@@ -121,15 +115,12 @@
 </div>
 
 <script>
-// Kendi Supabase proje bilgilerin
 const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
-
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const tabButtons = document.querySelectorAll(".tab-btn");
 const panels = document.querySelectorAll(".panel");
-
 tabButtons.forEach(btn => {
   btn.addEventListener("click", () => {
     tabButtons.forEach(b => b.classList.remove("active"));
@@ -150,59 +141,29 @@ document.getElementById("signup-btn").addEventListener("click", async () => {
   const email = document.getElementById("signup-email").value.trim();
   const password = document.getElementById("signup-password").value;
 
-  if (!username || !email || !password) {
-    showMsg("signup-msg", "Lütfen tüm alanları doldur.", true);
-    return;
-  }
-  if (password.length < 6) {
-    showMsg("signup-msg", "Şifre en az 6 karakter olmalı.", true);
-    return;
-  }
+  if (!username || !email || !password) { showMsg("signup-msg", "Lütfen tüm alanları doldur.", true); return; }
+  if (password.length < 6) { showMsg("signup-msg", "Şifre en az 6 karakter olmalı.", true); return; }
 
   const btn = document.getElementById("signup-btn");
-  btn.disabled = true;
-  btn.textContent = "Kayıt olunuyor...";
+  btn.disabled = true; btn.textContent = "Kayıt olunuyor...";
+  const { error } = await supabaseClient.auth.signUp({ email, password, options: { data: { kullanici_adi: username } } });
+  btn.disabled = false; btn.textContent = "Kayıt Ol";
 
-  const { data, error } = await supabaseClient.auth.signUp({
-    email: email,
-    password: password,
-    options: { data: { kullanici_adi: username } }
-  });
-
-  btn.disabled = false;
-  btn.textContent = "Kayıt Ol";
-
-  if (error) {
-    showMsg("signup-msg", "Hata: " + error.message, true);
-    return;
-  }
-
+  if (error) { showMsg("signup-msg", "Hata: " + error.message, true); return; }
   showMsg("signup-msg", "Kayıt başarılı! E-postana gelen onay linkine tıkladıktan sonra giriş yapabilirsin.", false);
 });
 
 document.getElementById("login-btn").addEventListener("click", async () => {
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value;
-
-  if (!email || !password) {
-    showMsg("login-msg", "Lütfen e-posta ve şifreni gir.", true);
-    return;
-  }
+  if (!email || !password) { showMsg("login-msg", "Lütfen e-posta ve şifreni gir.", true); return; }
 
   const btn = document.getElementById("login-btn");
-  btn.disabled = true;
-  btn.textContent = "Giriş yapılıyor...";
+  btn.disabled = true; btn.textContent = "Giriş yapılıyor...";
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = "Giriş Yap";
 
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  btn.disabled = false;
-  btn.textContent = "Giriş Yap";
-
-  if (error) {
-    showMsg("login-msg", "Hata: " + error.message, true);
-    return;
-  }
-
+  if (error) { showMsg("login-msg", "Hata: " + error.message, true); return; }
   window.location.href = "/";
 });
 
@@ -217,17 +178,10 @@ async function checkSession() {
     document.getElementById("logged-out-view").style.display = "none";
     document.getElementById("logged-in-view").style.display = "block";
     document.getElementById("current-email").textContent = session.user.email;
-
-    const { data: profile } = await supabaseClient
-      .from("kullanici_profilleri")
-      .select("kullanici_adi")
-      .eq("id", session.user.id)
-      .single();
-
+    const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi").eq("id", session.user.id).single();
     document.getElementById("current-username").textContent = profile ? profile.kullanici_adi : "Kullanıcı";
   }
 }
-
 checkSession();
 </script>
 </body>
