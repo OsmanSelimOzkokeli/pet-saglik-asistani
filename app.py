@@ -615,6 +615,22 @@ def veteriner_takvim_sayfa():
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "veteriner-takvim.html bulunamadı"}
 
+
+@app.get("/randevu-al")
+def randevu_al_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "randevu-al.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "randevu-al.html bulunamadı"}
+
+
+@app.get("/randevularim")
+def randevularim_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "randevularim.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "randevularim.html bulunamadı"}
+
     
 @app.get("/admin")
 def admin_sayfa():

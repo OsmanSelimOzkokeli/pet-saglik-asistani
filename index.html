@@ -59,6 +59,17 @@
   .nav-links a:hover, .nav-links a.current { color: var(--teal); }
 
   .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .notif-wrap { position: relative; }
+  .notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 2px 4px; }
+  .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--acil, #B8433A); color: #fff; font-size: 10px; font-weight: 700; border-radius: 100px; padding: 1px 5px; display: none; line-height: 1.3; }
+  .notif-badge.visible { display: block; }
+  .notif-dropdown { position: absolute; top: 100%; right: 0; margin-top: 10px; width: 300px; max-height: 340px; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 28px rgba(20,35,31,0.16); display: none; z-index: 50; }
+  .notif-dropdown.visible { display: block; }
+  .notif-item { padding: 12px 15px; border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer; color: var(--ink); line-height: 1.4; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item.unread { background: var(--teal-soft); font-weight: 600; }
+  .notif-item .notif-time { display: block; font-size: 11px; color: var(--ink-faint); font-weight: 400; margin-top: 3px; }
+  .notif-empty { padding: 22px; text-align: center; color: var(--ink-faint); font-size: 13px; }
   .nav-auth .who { color: var(--ink); font-weight: 600; }
   .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
 
@@ -244,6 +255,7 @@
     <div class="nav-links">
       <a href="/" class="current">Asistana Sor</a>
       <a href="/rehber">Veteriner &amp; petshop</a>
+      <a href="/randevu-al">Randevu Al</a>
       <a href="/sahiplendir">Sahiplendirme</a>
       <a href="/forum">Forum</a>
     </div>
@@ -367,19 +379,63 @@ async function initSession() {
           ? `<a href="/veteriner-takvim" style="margin-right:4px;">Müsaitlik Takvimim</a>`
           : `<a href="/veteriner-basvuru" style="margin-right:4px;">Veteriner misin?</a>`)
       : "";
-    el.innerHTML = `${adminLink}${vetLink}<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+    el.innerHTML = `
+      <div class="notif-wrap" id="notif-wrap">
+        <span class="notif-bell" id="notif-bell">🔔<span class="notif-badge" id="notif-badge"></span></span>
+        <div class="notif-dropdown" id="notif-dropdown"></div>
+      </div>
+      ${adminLink}${vetLink}<a href="/randevularim" style="margin-right:4px;">Randevularım</a><span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
     document.getElementById("logout-action").addEventListener("click", async () => {
       await supabaseClient.auth.signOut();
       window.location.reload();
     });
 
     currentUserId = session.user.id;
+    setupNotifications();
     if (profile && profile.arka_plan_url) {
       applyBackground(profile.arka_plan_url);
     }
   } else {
     el.innerHTML = `<a href="/giris">Giriş yap</a>`;
   }
+}
+
+function setupNotifications() {
+  document.getElementById("notif-bell").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById("notif-dropdown");
+    const willOpen = !dropdown.classList.contains("visible");
+    dropdown.classList.toggle("visible");
+    if (willOpen) await loadNotifications();
+  });
+  document.addEventListener("click", () => document.getElementById("notif-dropdown").classList.remove("visible"));
+  refreshNotifBadge();
+}
+
+async function refreshNotifBadge() {
+  const { count } = await supabaseClient.from("bildirimler").select("id", { count: "exact", head: true }).eq("kullanici_id", currentUserId).eq("okundu", false);
+  const badge = document.getElementById("notif-badge");
+  if (count && count > 0) { badge.textContent = count > 9 ? "9+" : count; badge.classList.add("visible"); }
+  else { badge.classList.remove("visible"); }
+}
+
+async function loadNotifications() {
+  const dropdown = document.getElementById("notif-dropdown");
+  const { data } = await supabaseClient.from("bildirimler").select("*").eq("kullanici_id", currentUserId).order("created_at", { ascending: false }).limit(10);
+  if (!data || data.length === 0) { dropdown.innerHTML = '<div class="notif-empty">Henüz bildirimin yok.</div>'; return; }
+  dropdown.innerHTML = data.map(n => `
+    <div class="notif-item ${n.okundu ? "" : "unread"}" data-id="${n.id}" data-link="${n.link || ""}">
+      ${n.mesaj}
+      <span class="notif-time">${new Date(n.created_at).toLocaleString("tr-TR")}</span>
+    </div>
+  `).join("");
+  dropdown.querySelectorAll(".notif-item").forEach(item => {
+    item.addEventListener("click", async () => {
+      await supabaseClient.from("bildirimler").update({ okundu: true }).eq("id", item.dataset.id);
+      if (item.dataset.link) window.location.href = item.dataset.link;
+    });
+  });
+  refreshNotifBadge();
 }
 initSession();
 

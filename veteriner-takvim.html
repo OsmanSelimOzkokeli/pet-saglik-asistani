@@ -56,6 +56,39 @@
   .msg-box.error { background: var(--acil-bg); color: var(--acil); }
 
   .denied-box { background: var(--acil-bg); color: var(--acil); border-radius: 12px; padding: 20px; font-size: 14px; text-align: center; }
+
+  .notif-wrap { position: relative; }
+  .notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 2px 4px; }
+  .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--acil); color: #fff; font-size: 10px; font-weight: 700; border-radius: 100px; padding: 1px 5px; display: none; line-height: 1.3; }
+  .notif-badge.visible { display: block; }
+  .notif-dropdown { position: absolute; top: 100%; right: 0; margin-top: 10px; width: 300px; max-height: 340px; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 28px rgba(20,35,31,0.16); display: none; z-index: 50; }
+  .notif-dropdown.visible { display: block; }
+  .notif-item { padding: 12px 15px; border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer; color: var(--ink); line-height: 1.4; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item.unread { background: var(--teal-soft); font-weight: 600; }
+  .notif-item .notif-time { display: block; font-size: 11px; color: var(--ink-faint); font-weight: 400; margin-top: 3px; }
+  .notif-empty { padding: 22px; text-align: center; color: var(--ink-faint); font-size: 13px; }
+
+  .section-tabs { display: flex; gap: 8px; margin-bottom: 22px; }
+  .section-tab-btn { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink-soft); }
+  .section-tab-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .randevu-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; }
+  .randevu-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .randevu-datetime { font-weight: 600; font-size: 16px; }
+  .status-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 100px; }
+  .status-badge.bekliyor { background: var(--yakinda-bg, #FBF1E1); color: var(--yakinda, #B9791E); }
+  .status-badge.onaylandı { background: var(--green-soft); color: #3F5A22; }
+  .status-badge.reddedildi { background: var(--acil-bg); color: var(--acil); }
+  .randevu-sebep { font-size: 13.5px; color: var(--ink); margin-bottom: 10px; }
+  .action-row { display: flex; gap: 8px; }
+  .action-btn { border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .approve-btn { background: var(--teal); color: #fff; }
+  .approve-btn:hover { background: var(--teal-bright); }
+  .reject-btn { background: var(--acil-bg); color: var(--acil); }
+  .reject-btn:hover { background: #F5D5D2; }
+  .action-btn:disabled { opacity: 0.5; cursor: wait; }
+  .empty-state { text-align: center; color: var(--ink-faint); font-size: 14px; padding: 40px 20px; background: var(--card); border: 1px dashed var(--line); border-radius: 14px; }
 </style>
 </head>
 <body>
@@ -81,8 +114,13 @@
 
 <div class="wrap">
   <div class="eyebrow">Veteriner Paneli</div>
-  <h1>Müsaitlik takvimin</h1>
-  <p class="sub">Hangi gün, hangi saatler arasında randevu alabileceğini belirle. Hayvan sahipleri sadece bu aralıklarda randevu isteği gönderebilecek.</p>
+  <h1>Veteriner panelin</h1>
+  <p class="sub">Müsaitlik takvimini ayarla, gelen randevu taleplerini onayla ya da reddet.</p>
+
+  <div class="section-tabs" id="section-tabs">
+    <button class="section-tab-btn active" data-section="takvim">🗓️ Müsaitlik Takvimi</button>
+    <button class="section-tab-btn" data-section="randevular">📋 Randevu İstekleri</button>
+  </div>
 
   <div id="content">
     <div class="msg-box visible">Yükleniyor...</div>
@@ -111,16 +149,69 @@ async function initSession() {
   currentUserId = session.user.id;
   const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, veteriner").eq("id", session.user.id).single();
   const username = profile ? profile.kullanici_adi : session.user.email;
-  navAuth.innerHTML = `<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+  navAuth.innerHTML = `
+    <div class="notif-wrap" id="notif-wrap">
+      <span class="notif-bell" id="notif-bell">🔔<span class="notif-badge" id="notif-badge"></span></span>
+      <div class="notif-dropdown" id="notif-dropdown"></div>
+    </div>
+    <span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
   document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
+  setupNotifications();
 
   if (!profile || !profile.veteriner) {
+    document.getElementById("section-tabs").style.display = "none";
     document.getElementById("content").innerHTML = `<div class="denied-box">Bu sayfa sadece onaylı veterinerler içindir. <a href="/veteriner-basvuru" style="color:inherit;font-weight:700;">Veteriner olarak başvur →</a></div>`;
     return;
   }
 
+  document.querySelectorAll("#section-tabs .section-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#section-tabs .section-tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      if (btn.dataset.section === "takvim") { loadSlots().then(renderDays); }
+      else { loadRandevuIstekleri(); }
+    });
+  });
+
   await loadSlots();
   renderDays();
+}
+
+function setupNotifications() {
+  document.getElementById("notif-bell").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById("notif-dropdown");
+    const willOpen = !dropdown.classList.contains("visible");
+    dropdown.classList.toggle("visible");
+    if (willOpen) await loadNotifications();
+  });
+  document.addEventListener("click", () => document.getElementById("notif-dropdown").classList.remove("visible"));
+  refreshNotifBadge();
+}
+
+async function refreshNotifBadge() {
+  const { count } = await supabaseClient.from("bildirimler").select("id", { count: "exact", head: true }).eq("kullanici_id", currentUserId).eq("okundu", false);
+  const badge = document.getElementById("notif-badge");
+  if (count && count > 0) { badge.textContent = count > 9 ? "9+" : count; badge.classList.add("visible"); }
+  else { badge.classList.remove("visible"); }
+}
+
+async function loadNotifications() {
+  const dropdown = document.getElementById("notif-dropdown");
+  const { data } = await supabaseClient.from("bildirimler").select("*").eq("kullanici_id", currentUserId).order("created_at", { ascending: false }).limit(10);
+  if (!data || data.length === 0) { dropdown.innerHTML = '<div class="notif-empty">Henüz bildirimin yok.</div>'; return; }
+  dropdown.innerHTML = data.map(n => `
+    <div class="notif-item ${n.okundu ? "" : "unread"}" data-id="${n.id}" data-link="${n.link || ""}">
+      ${n.mesaj}
+      <span class="notif-time">${new Date(n.created_at).toLocaleString("tr-TR")}</span>
+    </div>
+  `).join("");
+  dropdown.querySelectorAll(".notif-item").forEach(item => {
+    item.addEventListener("click", async () => {
+      await supabaseClient.from("bildirimler").update({ okundu: true }).eq("id", item.dataset.id);
+    });
+  });
+  refreshNotifBadge();
 }
 
 async function loadSlots() {
@@ -239,6 +330,97 @@ async function saveSlots() {
   msgBox.classList.add("visible", "success");
 
   await loadSlots();
+}
+
+let allRandevular = [];
+let activeRandevuTab = "bekliyor";
+
+async function loadRandevuIstekleri() {
+  const content = document.getElementById("content");
+  content.innerHTML = `
+    <div class="tabs" id="randevu-tabs" style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="tab-btn active" data-val="bekliyor">Bekleyen</button>
+      <button class="tab-btn" data-val="onaylandı">Onaylanan</button>
+      <button class="tab-btn" data-val="reddedildi">Reddedilen</button>
+      <button class="tab-btn" data-val="tumu">Tümü</button>
+    </div>
+    <div id="randevu-list"><div class="empty-state">Yükleniyor...</div></div>
+  `;
+
+  document.querySelectorAll("#randevu-tabs .tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#randevu-tabs .tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeRandevuTab = btn.dataset.val;
+      renderRandevuIstekleri();
+    });
+  });
+
+  const { data, error } = await supabaseClient.from("randevular").select("*").eq("veteriner_id", currentUserId).order("tarih", { ascending: true });
+
+  if (error) {
+    document.getElementById("randevu-list").innerHTML = `<div class="empty-state">Yüklenemedi: ${error.message}</div>`;
+    return;
+  }
+
+  allRandevular = data || [];
+  renderRandevuIstekleri();
+}
+
+function renderRandevuIstekleri() {
+  const list = document.getElementById("randevu-list");
+  const filtered = activeRandevuTab === "tumu" ? allRandevular : allRandevular.filter(r => r.durum === activeRandevuTab);
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-state">Bu kategoride randevu yok.</div>';
+    return;
+  }
+
+  list.innerHTML = "";
+  filtered.forEach(r => {
+    const card = document.createElement("div");
+    card.className = "randevu-card";
+    const d = new Date(r.tarih + "T00:00:00");
+    const tarihStr = d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+
+    const actionsHtml = r.durum === "bekliyor" ? `
+      <div class="action-row">
+        <button class="action-btn approve-btn" data-id="${r.id}" data-action="onaylandı">Onayla</button>
+        <button class="action-btn reject-btn" data-id="${r.id}" data-action="reddedildi">Reddet</button>
+      </div>
+    ` : "";
+
+    card.innerHTML = `
+      <div class="randevu-top">
+        <div class="randevu-datetime">${tarihStr} · ${r.saat}</div>
+        <span class="status-badge ${r.durum}">${r.durum}</span>
+      </div>
+      <div class="randevu-sebep">${r.sebep}</div>
+      ${actionsHtml}
+    `;
+    list.appendChild(card);
+  });
+
+  list.querySelectorAll(".action-btn").forEach(btn => {
+    btn.addEventListener("click", () => updateRandevuDurum(btn.dataset.id, btn.dataset.action, btn));
+  });
+}
+
+async function updateRandevuDurum(id, yeniDurum, btnEl) {
+  const card = btnEl.closest(".randevu-card");
+  card.querySelectorAll(".action-btn").forEach(b => b.disabled = true);
+
+  const { error } = await supabaseClient.from("randevular").update({ durum: yeniDurum }).eq("id", id);
+
+  if (error) {
+    alert("Güncellenemedi: " + error.message);
+    card.querySelectorAll(".action-btn").forEach(b => b.disabled = false);
+    return;
+  }
+
+  const item = allRandevular.find(r => r.id === id);
+  if (item) item.durum = yeniDurum;
+  renderRandevuIstekleri();
 }
 
 initSession();
