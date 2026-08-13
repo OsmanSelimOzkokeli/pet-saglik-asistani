@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Müsaitlik Takvimi — Pati Sağlık</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #F1F7F4; --card: #FFFFFF; --ink: #14231F; --ink-soft: #54655D; --ink-faint: #8A9C92;
+    --teal: #0B6E6C; --teal-bright: #12968F; --teal-soft: #E1F0EE;
+    --green: #6E9B37; --green-soft: #EAF3E1;
+    --line: #DCE7E0; --acil: #B8433A; --acil-bg: #FBEAE8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .navbar { position: sticky; top: 0; z-index: 20; background: rgba(241, 247, 244, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .navbar-inner { max-width: 980px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+  .brand-mark { width: 26px; height: 26px; flex-shrink: 0; }
+  .brand-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; color: var(--teal); letter-spacing: -0.01em; }
+  .nav-links { display: flex; align-items: center; gap: 22px; }
+  .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
+  .nav-links a:hover { color: var(--teal); }
+  .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .nav-auth .who { color: var(--ink); font-weight: 600; }
+  .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
+  @media (max-width: 620px) { .nav-links { display: none; } }
+
+  .wrap { max-width: 680px; margin: 0 auto; padding: 36px 24px 60px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; }
+  h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; margin: 0 0 6px; color: var(--teal); }
+  .sub { color: var(--ink-soft); font-size: 14.5px; line-height: 1.55; margin-bottom: 26px; }
+
+  .day-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 10px; }
+  .day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .day-name { font-weight: 600; font-size: 15px; }
+  .slot-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .slot-row input[type="time"] { font-family: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+  .slot-row span.sep { color: var(--ink-faint); font-size: 13px; }
+  .slot-remove-btn { background: none; border: none; color: var(--acil); font-size: 13px; cursor: pointer; font-family: inherit; margin-left: auto; }
+  .add-slot-btn { background: var(--teal-soft); color: var(--teal); border: none; border-radius: 8px; padding: 7px 13px; font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .add-slot-btn:hover { background: #D3E9E6; }
+  .no-slot-text { font-size: 13px; color: var(--ink-faint); margin-bottom: 8px; }
+
+  .save-btn { width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 8px; }
+  .save-btn:hover { background: var(--teal-bright); }
+  .save-btn:disabled { background: var(--ink-faint); cursor: wait; }
+
+  .msg-box { padding: 12px; border-radius: 10px; font-size: 13.5px; margin-top: 14px; display: none; text-align: center; }
+  .msg-box.visible { display: block; }
+  .msg-box.success { background: var(--green-soft); color: #3F5A22; }
+  .msg-box.error { background: var(--acil-bg); color: var(--acil); }
+
+  .denied-box { background: var(--acil-bg); color: var(--acil); border-radius: 12px; padding: 20px; font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+        <path d="M6 18C6 13 10 9 16 9C22 9 26 13 26 18C26 23 21 26 16 26C11 26 6 23 6 18Z" stroke="#0B6E6C" stroke-width="2"/>
+        <path d="M11 16L14 20L16 15L18 20L21 16" stroke="#6E9B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">Pati Sağlık</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">Asistana Sor</a>
+      <a href="/rehber">Veteriner &amp; petshop</a>
+      <a href="/sahiplendir">Sahiplendirme</a>
+      <a href="/forum">Forum</a>
+    </div>
+    <div class="nav-auth" id="nav-auth"></div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="eyebrow">Veteriner Paneli</div>
+  <h1>Müsaitlik takvimin</h1>
+  <p class="sub">Hangi gün, hangi saatler arasında randevu alabileceğini belirle. Hayvan sahipleri sadece bu aralıklarda randevu isteği gönderebilecek.</p>
+
+  <div id="content">
+    <div class="msg-box visible">Yükleniyor...</div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const GUN_ADLARI = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+let currentUserId = null;
+let slotData = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+
+async function initSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const navAuth = document.getElementById("nav-auth");
+
+  if (!session) {
+    navAuth.innerHTML = `<a href="/giris">Giriş yap</a>`;
+    document.getElementById("content").innerHTML = `<div class="denied-box">Bu sayfayı görmek için giriş yapman gerekiyor.</div>`;
+    return;
+  }
+
+  currentUserId = session.user.id;
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, veteriner").eq("id", session.user.id).single();
+  const username = profile ? profile.kullanici_adi : session.user.email;
+  navAuth.innerHTML = `<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+  document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
+
+  if (!profile || !profile.veteriner) {
+    document.getElementById("content").innerHTML = `<div class="denied-box">Bu sayfa sadece onaylı veterinerler içindir. <a href="/veteriner-basvuru" style="color:inherit;font-weight:700;">Veteriner olarak başvur →</a></div>`;
+    return;
+  }
+
+  await loadSlots();
+  renderDays();
+}
+
+async function loadSlots() {
+  const { data } = await supabaseClient.from("veteriner_musaitlik").select("*").eq("veteriner_id", currentUserId);
+  slotData = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+  (data || []).forEach(s => {
+    slotData[s.gun].push({ id: s.id, baslangic: s.baslangic_saat, bitis: s.bitis_saat });
+  });
+}
+
+function renderDays() {
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  const siraliGunler = [1, 2, 3, 4, 5, 6, 0];
+  siraliGunler.forEach(gun => {
+    const card = document.createElement("div");
+    card.className = "day-card";
+    card.innerHTML = `
+      <div class="day-header">
+        <div class="day-name">${GUN_ADLARI[gun]}</div>
+        <button type="button" class="add-slot-btn" data-gun="${gun}">+ Saat aralığı ekle</button>
+      </div>
+      <div class="slots-container" id="slots-gun-${gun}"></div>
+    `;
+    content.appendChild(card);
+    renderSlotsForDay(gun);
+  });
+
+  const saveWrap = document.createElement("div");
+  saveWrap.innerHTML = `
+    <button class="save-btn" id="save-btn">Takvimi Kaydet</button>
+    <div class="msg-box" id="msg-box"></div>
+  `;
+  content.appendChild(saveWrap);
+
+  document.querySelectorAll(".add-slot-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const gun = parseInt(btn.dataset.gun);
+      slotData[gun].push({ id: null, baslangic: "09:00", bitis: "17:00" });
+      renderSlotsForDay(gun);
+    });
+  });
+
+  document.getElementById("save-btn").addEventListener("click", saveSlots);
+}
+
+function renderSlotsForDay(gun) {
+  const container = document.getElementById(`slots-gun-${gun}`);
+  if (slotData[gun].length === 0) {
+    container.innerHTML = `<div class="no-slot-text">Bu gün için müsaitlik yok.</div>`;
+    return;
+  }
+  container.innerHTML = "";
+  slotData[gun].forEach((slot, idx) => {
+    const row = document.createElement("div");
+    row.className = "slot-row";
+    row.innerHTML = `
+      <input type="time" value="${slot.baslangic}" data-gun="${gun}" data-idx="${idx}" data-field="baslangic">
+      <span class="sep">–</span>
+      <input type="time" value="${slot.bitis}" data-gun="${gun}" data-idx="${idx}" data-field="bitis">
+      <button type="button" class="slot-remove-btn" data-gun="${gun}" data-idx="${idx}">Kaldır</button>
+    `;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll("input[type='time']").forEach(input => {
+    input.addEventListener("change", () => {
+      const g = parseInt(input.dataset.gun), i = parseInt(input.dataset.idx), field = input.dataset.field;
+      slotData[g][i][field] = input.value;
+    });
+  });
+
+  container.querySelectorAll(".slot-remove-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const g = parseInt(btn.dataset.gun), i = parseInt(btn.dataset.idx);
+      slotData[g].splice(i, 1);
+      renderSlotsForDay(g);
+    });
+  });
+}
+
+async function saveSlots() {
+  const btn = document.getElementById("save-btn");
+  const msgBox = document.getElementById("msg-box");
+  btn.disabled = true; btn.textContent = "Kaydediliyor...";
+  msgBox.classList.remove("visible", "success", "error");
+
+  const { error: deleteError } = await supabaseClient.from("veteriner_musaitlik").delete().eq("veteriner_id", currentUserId);
+  if (deleteError) {
+    btn.disabled = false; btn.textContent = "Takvimi Kaydet";
+    msgBox.textContent = "Kaydedilemedi: " + deleteError.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  const yeniSatirlar = [];
+  for (let gun = 0; gun <= 6; gun++) {
+    slotData[gun].forEach(slot => {
+      yeniSatirlar.push({ veteriner_id: currentUserId, gun, baslangic_saat: slot.baslangic, bitis_saat: slot.bitis });
+    });
+  }
+
+  if (yeniSatirlar.length > 0) {
+    const { error: insertError } = await supabaseClient.from("veteriner_musaitlik").insert(yeniSatirlar);
+    if (insertError) {
+      btn.disabled = false; btn.textContent = "Takvimi Kaydet";
+      msgBox.textContent = "Kaydedilemedi: " + insertError.message;
+      msgBox.classList.add("visible", "error");
+      return;
+    }
+  }
+
+  btn.disabled = false; btn.textContent = "Takvimi Kaydet";
+  msgBox.textContent = "Takvimin kaydedildi.";
+  msgBox.classList.add("visible", "success");
+
+  await loadSlots();
+}
+
+initSession();
+</script>
+</body>
+</html>

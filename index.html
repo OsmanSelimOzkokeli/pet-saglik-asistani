@@ -362,7 +362,11 @@ async function initSession() {
       .single();
     const username = profile ? profile.kullanici_adi : session.user.email;
     const adminLink = profile && profile.admin ? `<a href="/admin" style="margin-right:4px;">Admin paneli</a>` : "";
-    const vetLink = profile && !profile.veteriner ? `<a href="/veteriner-basvuru" style="margin-right:4px;">Veteriner misin?</a>` : "";
+    const vetLink = profile
+      ? (profile.veteriner
+          ? `<a href="/veteriner-takvim" style="margin-right:4px;">Müsaitlik Takvimim</a>`
+          : `<a href="/veteriner-basvuru" style="margin-right:4px;">Veteriner misin?</a>`)
+      : "";
     el.innerHTML = `${adminLink}${vetLink}<span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
     document.getElementById("logout-action").addEventListener("click", async () => {
       await supabaseClient.auth.signOut();

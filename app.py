@@ -598,7 +598,7 @@ def sahiplendir_sayfa():
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "sahiplendirme.html bulunamadı"}
-    
+
 
 @app.get("/veteriner-basvuru")
 def veteriner_basvuru_sayfa():
@@ -608,6 +608,14 @@ def veteriner_basvuru_sayfa():
     return {"status": "hata", "mesaj": "veteriner-basvuru.html bulunamadı"}
 
 
+@app.get("/veteriner-takvim")
+def veteriner_takvim_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "veteriner-takvim.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "veteriner-takvim.html bulunamadı"}
+
+    
 @app.get("/admin")
 def admin_sayfa():
     html_path = os.path.join(os.path.dirname(__file__), "admin.html")
