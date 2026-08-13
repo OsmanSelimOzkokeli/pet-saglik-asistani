@@ -89,6 +89,25 @@
   .reject-btn:hover { background: #F5D5D2; }
   .action-btn:disabled { opacity: 0.5; cursor: wait; }
   .empty-state { text-align: center; color: var(--ink-faint); font-size: 14px; padding: 40px 20px; background: var(--card); border: 1px dashed var(--line); border-radius: 14px; }
+
+  .calendar-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; }
+  .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .calendar-nav-btn { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; width: 32px; height: 32px; font-size: 15px; cursor: pointer; color: var(--ink-soft); }
+  .calendar-nav-btn:hover { border-color: var(--teal-bright); color: var(--teal); }
+  .calendar-month-label { font-weight: 600; font-size: 14.5px; color: var(--ink); text-transform: capitalize; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .calendar-dow { text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-faint); padding-bottom: 4px; text-transform: uppercase; }
+  .calendar-cell {
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--ink); position: relative;
+    background: var(--paper); border: none; font-family: inherit;
+  }
+  .calendar-cell:hover { background: var(--teal-soft); }
+  .calendar-cell.empty { visibility: hidden; cursor: default; background: none; }
+  .calendar-cell.active { background: var(--teal); color: #fff; }
+  .calendar-cell .dot { width: 5px; height: 5px; border-radius: 100%; background: var(--acil); position: absolute; bottom: 4px; }
+  .calendar-cell.active .dot { background: #fff; }
+  .cal-clear-btn { font-size: 12px; color: var(--teal-bright); font-weight: 600; cursor: pointer; margin-top: 10px; display: inline-block; }
 </style>
 </head>
 <body>
@@ -334,10 +353,24 @@ async function saveSlots() {
 
 let allRandevular = [];
 let activeRandevuTab = "bekliyor";
+let seciliRandevuTarihi = null;
+let rvCalAy = new Date().getMonth();
+let rvCalYil = new Date().getFullYear();
+const RV_AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const RV_DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 async function loadRandevuIstekleri() {
   const content = document.getElementById("content");
   content.innerHTML = `
+    <div class="calendar-card">
+      <div class="calendar-nav">
+        <button type="button" class="calendar-nav-btn" id="rv-cal-prev">‹</button>
+        <div class="calendar-month-label" id="rv-cal-month-label"></div>
+        <button type="button" class="calendar-nav-btn" id="rv-cal-next">›</button>
+      </div>
+      <div class="calendar-grid" id="rv-calendar-grid"></div>
+      <span class="cal-clear-btn" id="rv-cal-clear" style="display:none;">Tarih filtresini temizle</span>
+    </div>
     <div class="tabs" id="randevu-tabs" style="display:flex;gap:8px;margin-bottom:20px;">
       <button class="tab-btn active" data-val="bekliyor">Bekleyen</button>
       <button class="tab-btn" data-val="onaylandı">Onaylanan</button>
@@ -346,6 +379,15 @@ async function loadRandevuIstekleri() {
     </div>
     <div id="randevu-list"><div class="empty-state">Yükleniyor...</div></div>
   `;
+
+  document.getElementById("rv-cal-prev").addEventListener("click", () => shiftRvCalMonth(-1));
+  document.getElementById("rv-cal-next").addEventListener("click", () => shiftRvCalMonth(1));
+  document.getElementById("rv-cal-clear").addEventListener("click", () => {
+    seciliRandevuTarihi = null;
+    document.getElementById("rv-cal-clear").style.display = "none";
+    drawRvCalendar();
+    renderRandevuIstekleri();
+  });
 
   document.querySelectorAll("#randevu-tabs .tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -364,12 +406,69 @@ async function loadRandevuIstekleri() {
   }
 
   allRandevular = data || [];
+  drawRvCalendar();
   renderRandevuIstekleri();
+}
+
+function shiftRvCalMonth(delta) {
+  rvCalAy += delta;
+  if (rvCalAy > 11) { rvCalAy = 0; rvCalYil++; }
+  if (rvCalAy < 0) { rvCalAy = 11; rvCalYil--; }
+  drawRvCalendar();
+}
+
+function drawRvCalendar() {
+  document.getElementById("rv-cal-month-label").textContent = `${RV_AY_ADLARI[rvCalAy]} ${rvCalYil}`;
+
+  const randevuluGunler = {};
+  allRandevular.forEach(r => {
+    const [yy, mm, dd] = r.tarih.split("-").map(Number);
+    if (yy === rvCalYil && mm - 1 === rvCalAy) {
+      randevuluGunler[dd] = (randevuluGunler[dd] || 0) + 1;
+    }
+  });
+
+  const ilkGun = new Date(rvCalYil, rvCalAy, 1);
+  const sonGun = new Date(rvCalYil, rvCalAy + 1, 0);
+  const baslangicBosluk = (ilkGun.getDay() + 6) % 7;
+
+  const grid = document.getElementById("rv-calendar-grid");
+  grid.innerHTML = "";
+  RV_DOW.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "calendar-dow";
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  for (let i = 0; i < baslangicBosluk; i++) {
+    const el = document.createElement("div");
+    el.className = "calendar-cell empty";
+    grid.appendChild(el);
+  }
+
+  for (let gun = 1; gun <= sonGun.getDate(); gun++) {
+    const iso = `${rvCalYil}-${String(rvCalAy + 1).padStart(2, "0")}-${String(gun).padStart(2, "0")}`;
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "calendar-cell" + (iso === seciliRandevuTarihi ? " active" : "");
+    cell.innerHTML = `${gun}${randevuluGunler[gun] ? '<span class="dot"></span>' : ""}`;
+    cell.addEventListener("click", () => {
+      seciliRandevuTarihi = iso;
+      document.getElementById("rv-cal-clear").style.display = "inline-block";
+      drawRvCalendar();
+      renderRandevuIstekleri();
+    });
+    grid.appendChild(cell);
+  }
 }
 
 function renderRandevuIstekleri() {
   const list = document.getElementById("randevu-list");
-  const filtered = activeRandevuTab === "tumu" ? allRandevular : allRandevular.filter(r => r.durum === activeRandevuTab);
+  let filtered = activeRandevuTab === "tumu" ? allRandevular : allRandevular.filter(r => r.durum === activeRandevuTab);
+  if (seciliRandevuTarihi) {
+    filtered = filtered.filter(r => r.tarih === seciliRandevuTarihi);
+  }
 
   if (filtered.length === 0) {
     list.innerHTML = '<div class="empty-state">Bu kategoride randevu yok.</div>';
