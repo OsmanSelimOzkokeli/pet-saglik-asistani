@@ -170,12 +170,45 @@ document.getElementById("login-btn").addEventListener("click", async () => {
 
   const btn = document.getElementById("login-btn");
   btn.disabled = true; btn.textContent = "Giriş yapılıyor...";
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   btn.disabled = false; btn.textContent = "Giriş Yap";
 
   if (error) { showMsg("login-msg", "Hata: " + error.message, true); return; }
+
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("hesap_kapatildi").eq("id", data.user.id).single();
+
+  if (profile && profile.hesap_kapatildi) {
+    showReactivatePrompt();
+    return;
+  }
+
   window.location.href = "/";
 });
+
+function showReactivatePrompt() {
+  document.getElementById("panel-login").innerHTML = `
+    <div class="card">
+      <p style="font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:16px;">
+        Bu hesap daha önce kapatılmış. Yeniden aktifleştirmek ister misin? Tüm verilerin (ilanların, randevuların) olduğu gibi duruyor.
+      </p>
+      <button class="submit" id="reactivate-btn">Evet, hesabımı aktifleştir</button>
+      <button class="submit" id="reactivate-cancel-btn" style="background:var(--acil-bg);color:var(--acil);margin-top:10px;">Hayır, çıkış yap</button>
+      <div class="msg-box" id="reactivate-msg"></div>
+    </div>
+  `;
+
+  document.getElementById("reactivate-btn").addEventListener("click", async () => {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { error } = await supabaseClient.from("kullanici_profilleri").update({ hesap_kapatildi: false }).eq("id", user.id);
+    if (error) { showMsg("reactivate-msg", "Bir sorun oluştu: " + error.message, true); return; }
+    window.location.href = "/";
+  });
+
+  document.getElementById("reactivate-cancel-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.reload();
+  });
+}
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await supabaseClient.auth.signOut();

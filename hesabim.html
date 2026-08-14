@@ -48,7 +48,18 @@
   .sub { color: var(--ink-soft); font-size: 14.5px; margin-bottom: 26px; }
 
   .profile-header { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-bottom: 20px; }
-  .avatar-circle { width: 52px; height: 52px; border-radius: 100%; background: var(--teal-soft); color: var(--teal); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; flex-shrink: 0; }
+  .avatar-circle { width: 52px; height: 52px; border-radius: 100%; background: var(--teal-soft); color: var(--teal); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; flex-shrink: 0; overflow: hidden; position: relative; }
+  .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar-actions { display: flex; flex-direction: column; gap: 4px; }
+  .avatar-action-btn { font-size: 12px; font-weight: 600; color: var(--teal-bright); cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; text-align: left; }
+  .avatar-action-btn.danger { color: var(--acil); }
+
+  .cooldown-note { font-size: 12px; color: var(--yakinda); background: var(--yakinda-bg); border-radius: 8px; padding: 9px 11px; margin-bottom: 12px; }
+
+  .danger-zone { border-color: var(--acil-bg); }
+  .danger-zone .section-title { color: var(--acil); }
+  .danger-btn { background: var(--acil-bg); color: var(--acil); border: none; border-radius: 10px; padding: 11px 18px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .danger-btn:hover { background: #F5D5D2; }
   .profile-header-info { flex: 1; min-width: 0; }
   .profile-header-name { font-weight: 600; font-size: 17px; margin-bottom: 2px; }
   .profile-header-email { font-size: 13px; color: var(--ink-soft); }
@@ -143,7 +154,7 @@ async function initSession() {
   currentUserId = session.user.id;
   currentUserEmail = session.user.email;
 
-  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner").eq("id", session.user.id).single();
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner, profil_foto_url, kullanici_adi_degisim_tarihi").eq("id", session.user.id).single();
   const username = profile ? profile.kullanici_adi : session.user.email;
   const adminLink = profile && profile.admin ? `<a href="/admin" style="margin-right:4px;">Admin paneli</a>` : "";
   const vetLink = profile
@@ -219,34 +230,65 @@ async function renderContent(profile, session) {
   }
   const adminBadgeHtml = profile && profile.admin ? `<a href="/admin" class="role-badge admin">🛡️ Admin</a>` : "";
 
+  const avatarHtml = profile && profile.profil_foto_url
+    ? `<img src="${profile.profil_foto_url}" alt="Profil fotoğrafı">`
+    : username.charAt(0).toUpperCase();
+
+  // Kullanıcı adı değişim sınırı: 30 günde bir
+  let usernameDegistirilebilir = true;
+  let cooldownNoteHtml = "";
+  if (profile && profile.kullanici_adi_degisim_tarihi) {
+    const sonDegisim = new Date(profile.kullanici_adi_degisim_tarihi);
+    const gunFarki = (Date.now() - sonDegisim.getTime()) / (1000 * 60 * 60 * 24);
+    if (gunFarki < 30) {
+      usernameDegistirilebilir = false;
+      const kalanGun = Math.ceil(30 - gunFarki);
+      cooldownNoteHtml = `<div class="cooldown-note">Kullanıcı adını en son ${sonDegisim.toLocaleDateString("tr-TR")} tarihinde değiştirdin. ${kalanGun} gün sonra tekrar değiştirebilirsin.</div>`;
+    }
+  }
+
   content.innerHTML = `
     <div class="profile-header">
-      <div class="avatar-circle">${username.charAt(0).toUpperCase()}</div>
+      <div class="avatar-circle" id="avatar-circle">${avatarHtml}</div>
       <div class="profile-header-info">
         <div class="profile-header-name">${username}</div>
         <div class="profile-header-email">${currentUserEmail}</div>
         <div class="profile-header-meta">Üye olma tarihi: ${uyeOlmaTarihi}</div>
       </div>
+      <div class="avatar-actions">
+        <button class="avatar-action-btn" id="avatar-upload-btn">Fotoğraf değiştir</button>
+        ${profile && profile.profil_foto_url ? '<button class="avatar-action-btn danger" id="avatar-remove-btn">Kaldır</button>' : ""}
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none;">
     </div>
 
     <div class="badge-row">${adminBadgeHtml}${vetBadgeHtml}</div>
 
     <div class="section-card">
       <div class="section-title">Kullanıcı adı</div>
-      <div class="section-desc">Diğer kullanıcılara bu isimle görünürsün.</div>
+      <div class="section-desc">Diğer kullanıcılara bu isimle görünürsün. Ayda bir kez değiştirebilirsin.</div>
+      ${cooldownNoteHtml}
       <div class="field">
-        <input type="text" id="username-input" value="${username}">
+        <input type="text" id="username-input" value="${username}" ${usernameDegistirilebilir ? "" : "disabled"}>
       </div>
-      <button class="save-btn" id="username-save-btn">Kaydet</button>
+      <button class="save-btn" id="username-save-btn" ${usernameDegistirilebilir ? "" : "disabled"}>Kaydet</button>
       <div class="msg-box" id="username-msg-box"></div>
     </div>
 
     <div class="section-card">
-      <div class="section-title">Şifre değiştir</div>
-      <div class="section-desc">Yeni şifreni gir, hesabına devam et.</div>
-      <div class="field"><label for="new-password">Yeni şifre</label><input type="password" id="new-password" placeholder="En az 6 karakter"></div>
-      <div class="field"><label for="new-password-confirm">Yeni şifre (tekrar)</label><input type="password" id="new-password-confirm" placeholder="Şifreni tekrar yaz"></div>
-      <button class="save-btn" id="password-save-btn">Şifreyi Güncelle</button>
+      <div class="section-title">E-posta</div>
+      <div class="section-desc">E-postanı değiştirmek istersen yeni adresine bir onay maili göndeririz.</div>
+      <div class="field">
+        <input type="email" id="email-input" value="${currentUserEmail}">
+      </div>
+      <button class="save-btn" id="email-save-btn">E-postayı Güncelle</button>
+      <div class="msg-box" id="email-msg-box"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">Şifre</div>
+      <div class="section-desc">Güvenlik için şifreni doğrudan buradan değiştiremezsin — e-postana bir sıfırlama bağlantısı göndeririz.</div>
+      <button class="save-btn" id="password-reset-btn">Şifremi Sıfırla</button>
       <div class="msg-box" id="password-msg-box"></div>
     </div>
 
@@ -259,12 +301,128 @@ async function renderContent(profile, session) {
       </div>
     </div>
 
-    <button class="signout-btn" id="signout-btn">Çıkış Yap</button>
+    <button class="signout-btn" id="signout-btn" style="margin-bottom:16px;">Çıkış Yap</button>
+
+    <div class="section-card danger-zone">
+      <div class="section-title">Hesabımı kapat</div>
+      <div class="section-desc">Hesabın kapatılır, tekrar giriş yapmayı denediğinde istersen yeniden aktifleştirebilirsin. İlanların ve geçmiş verilerin silinmez.</div>
+      <button class="danger-btn" id="deactivate-btn">Hesabımı Kapat</button>
+      <div class="msg-box" id="deactivate-msg-box"></div>
+    </div>
   `;
 
   document.getElementById("username-save-btn").addEventListener("click", saveUsername);
-  document.getElementById("password-save-btn").addEventListener("click", savePassword);
+  document.getElementById("email-save-btn").addEventListener("click", saveEmail);
+  document.getElementById("password-reset-btn").addEventListener("click", sendPasswordReset);
   document.getElementById("signout-btn").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.href = "/"; });
+  document.getElementById("deactivate-btn").addEventListener("click", deactivateAccount);
+
+  document.getElementById("avatar-upload-btn").addEventListener("click", () => document.getElementById("avatar-file-input").click());
+  document.getElementById("avatar-file-input").addEventListener("change", uploadAvatar);
+  const removeBtn = document.getElementById("avatar-remove-btn");
+  if (removeBtn) removeBtn.addEventListener("click", removeAvatar);
+}
+
+async function uploadAvatar() {
+  const file = document.getElementById("avatar-file-input").files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    alert("Fotoğraf çok büyük (max 5MB).");
+    return;
+  }
+
+  const uzanti = file.name.split(".").pop();
+  const dosyaYolu = `${currentUserId}/profil-${Date.now()}.${uzanti}`;
+
+  const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, file);
+  if (uploadError) {
+    alert("Yüklenemedi: " + uploadError.message);
+    return;
+  }
+
+  const { data: publicUrlData } = supabaseClient.storage.from("ilan-fotograflari").getPublicUrl(dosyaYolu);
+  await supabaseClient.from("kullanici_profilleri").update({ profil_foto_url: publicUrlData.publicUrl }).eq("id", currentUserId);
+
+  document.getElementById("avatar-circle").innerHTML = `<img src="${publicUrlData.publicUrl}" alt="Profil fotoğrafı">`;
+}
+
+async function removeAvatar() {
+  await supabaseClient.from("kullanici_profilleri").update({ profil_foto_url: null }).eq("id", currentUserId);
+  window.location.reload();
+}
+
+async function saveEmail() {
+  const yeniEmail = document.getElementById("email-input").value.trim();
+  const msgBox = document.getElementById("email-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  if (!yeniEmail || yeniEmail === currentUserEmail) {
+    msgBox.textContent = "Yeni bir e-posta adresi gir.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  const btn = document.getElementById("email-save-btn");
+  btn.disabled = true; btn.textContent = "Gönderiliyor...";
+
+  const { error } = await supabaseClient.auth.updateUser({ email: yeniEmail });
+
+  btn.disabled = false; btn.textContent = "E-postayı Güncelle";
+
+  if (error) {
+    msgBox.textContent = "Bir sorun oluştu: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  msgBox.textContent = "Onay için hem eski hem yeni e-postana bir bağlantı gönderdik.";
+  msgBox.classList.add("visible", "success");
+}
+
+async function sendPasswordReset() {
+  const msgBox = document.getElementById("password-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  const btn = document.getElementById("password-reset-btn");
+  btn.disabled = true; btn.textContent = "Gönderiliyor...";
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(currentUserEmail, {
+    redirectTo: window.location.origin + "/sifre-sifirla",
+  });
+
+  btn.disabled = false; btn.textContent = "Şifremi Sıfırla";
+
+  if (error) {
+    msgBox.textContent = "Bir sorun oluştu: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  msgBox.textContent = "E-postana bir sıfırlama bağlantısı gönderdik.";
+  msgBox.classList.add("visible", "success");
+}
+
+async function deactivateAccount() {
+  const msgBox = document.getElementById("deactivate-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  const onayli = confirm("Hesabını kapatmak istediğinden emin misin? Çıkış yapılacak, tekrar giriş yaptığında yeniden aktifleştirme seçeneği çıkacak.");
+  if (!onayli) return;
+
+  const btn = document.getElementById("deactivate-btn");
+  btn.disabled = true; btn.textContent = "Kapatılıyor...";
+
+  const { error } = await supabaseClient.from("kullanici_profilleri").update({ hesap_kapatildi: true }).eq("id", currentUserId);
+
+  if (error) {
+    btn.disabled = false; btn.textContent = "Hesabımı Kapat";
+    msgBox.textContent = "Bir sorun oluştu: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  await supabaseClient.auth.signOut();
+  window.location.href = "/giris";
 }
 
 async function saveUsername() {
@@ -281,7 +439,10 @@ async function saveUsername() {
   const btn = document.getElementById("username-save-btn");
   btn.disabled = true; btn.textContent = "Kaydediliyor...";
 
-  const { error } = await supabaseClient.from("kullanici_profilleri").update({ kullanici_adi: yeniAd }).eq("id", currentUserId);
+  const { error } = await supabaseClient.from("kullanici_profilleri").update({
+    kullanici_adi: yeniAd,
+    kullanici_adi_degisim_tarihi: new Date().toISOString(),
+  }).eq("id", currentUserId);
 
   btn.disabled = false; btn.textContent = "Kaydet";
 
@@ -291,46 +452,11 @@ async function saveUsername() {
     return;
   }
 
-  msgBox.textContent = "Kullanıcı adın güncellendi.";
+  msgBox.textContent = "Kullanıcı adın güncellendi. Bir sonraki değişiklik için 30 gün beklemen gerekecek.";
   msgBox.classList.add("visible", "success");
   document.querySelector(".profile-header-name").textContent = yeniAd;
-  document.querySelector(".avatar-circle").textContent = yeniAd.charAt(0).toUpperCase();
-}
-
-async function savePassword() {
-  const yeniSifre = document.getElementById("new-password").value;
-  const yeniSifreTekrar = document.getElementById("new-password-confirm").value;
-  const msgBox = document.getElementById("password-msg-box");
-  msgBox.classList.remove("visible", "success", "error");
-
-  if (yeniSifre.length < 6) {
-    msgBox.textContent = "Şifre en az 6 karakter olmalı.";
-    msgBox.classList.add("visible", "error");
-    return;
-  }
-  if (yeniSifre !== yeniSifreTekrar) {
-    msgBox.textContent = "Şifreler eşleşmiyor.";
-    msgBox.classList.add("visible", "error");
-    return;
-  }
-
-  const btn = document.getElementById("password-save-btn");
-  btn.disabled = true; btn.textContent = "Güncelleniyor...";
-
-  const { error } = await supabaseClient.auth.updateUser({ password: yeniSifre });
-
-  btn.disabled = false; btn.textContent = "Şifreyi Güncelle";
-
-  if (error) {
-    msgBox.textContent = "Güncellenemedi: " + error.message;
-    msgBox.classList.add("visible", "error");
-    return;
-  }
-
-  msgBox.textContent = "Şifren güncellendi.";
-  msgBox.classList.add("visible", "success");
-  document.getElementById("new-password").value = "";
-  document.getElementById("new-password-confirm").value = "";
+  document.getElementById("username-input").disabled = true;
+  btn.disabled = true;
 }
 
 initSession();
