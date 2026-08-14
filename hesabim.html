@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hesabım — Pati Sağlık</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #F1F7F4; --card: #FFFFFF; --ink: #14231F; --ink-soft: #54655D; --ink-faint: #8A9C92;
+    --teal: #0B6E6C; --teal-bright: #12968F; --teal-soft: #E1F0EE;
+    --green: #6E9B37; --green-soft: #EAF3E1;
+    --line: #DCE7E0; --acil: #B8433A; --acil-bg: #FBEAE8; --yakinda: #B9791E; --yakinda-bg: #FBF1E1;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .navbar { position: sticky; top: 0; z-index: 20; background: rgba(241, 247, 244, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .navbar-inner { max-width: 980px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+  .brand-mark { width: 26px; height: 26px; flex-shrink: 0; }
+  .brand-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; color: var(--teal); letter-spacing: -0.01em; }
+  .nav-links { display: flex; align-items: center; gap: 20px; }
+  .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
+  .nav-links a:hover { color: var(--teal); }
+  .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .nav-auth .who { color: var(--ink); font-weight: 600; }
+  .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
+  @media (max-width: 760px) { .nav-links { display: none; } }
+
+  .notif-wrap { position: relative; }
+  .notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 2px 4px; }
+  .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--acil); color: #fff; font-size: 10px; font-weight: 700; border-radius: 100px; padding: 1px 5px; display: none; line-height: 1.3; }
+  .notif-badge.visible { display: block; }
+  .notif-dropdown { position: absolute; top: 100%; right: 0; margin-top: 10px; width: 300px; max-height: 340px; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 28px rgba(20,35,31,0.16); display: none; z-index: 50; }
+  .notif-dropdown.visible { display: block; }
+  .notif-item { padding: 12px 15px; border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer; color: var(--ink); line-height: 1.4; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item.unread { background: var(--teal-soft); font-weight: 600; }
+  .notif-item .notif-time { display: block; font-size: 11px; color: var(--ink-faint); font-weight: 400; margin-top: 3px; }
+  .notif-empty { padding: 22px; text-align: center; color: var(--ink-faint); font-size: 13px; }
+
+  .wrap { max-width: 620px; margin: 0 auto; padding: 36px 24px 60px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; }
+  h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; margin: 0 0 6px; color: var(--teal); }
+  .sub { color: var(--ink-soft); font-size: 14.5px; margin-bottom: 26px; }
+
+  .profile-header { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-bottom: 20px; }
+  .avatar-circle { width: 52px; height: 52px; border-radius: 100%; background: var(--teal-soft); color: var(--teal); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; flex-shrink: 0; }
+  .profile-header-info { flex: 1; min-width: 0; }
+  .profile-header-name { font-weight: 600; font-size: 17px; margin-bottom: 2px; }
+  .profile-header-email { font-size: 13px; color: var(--ink-soft); }
+  .profile-header-meta { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .role-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; padding: 6px 13px; border-radius: 100px; text-decoration: none; }
+  .role-badge.admin { background: var(--teal-soft); color: var(--teal); }
+  .role-badge.vet-onayli { background: var(--green-soft); color: #3F5A22; }
+  .role-badge.vet-beklemede { background: var(--yakinda-bg); color: var(--yakinda); }
+  .role-badge.vet-yok { background: var(--paper); color: var(--ink-soft); border: 1px solid var(--line); }
+
+  .section-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 16px; }
+  .section-title { font-weight: 600; font-size: 15.5px; margin-bottom: 4px; }
+  .section-desc { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  input { width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
+  input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+  input:disabled { color: var(--ink-faint); cursor: not-allowed; }
+
+  .save-btn { background: var(--teal); color: #fff; border: none; border-radius: 10px; padding: 11px 18px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .save-btn:hover { background: var(--teal-bright); }
+  .save-btn:disabled { background: var(--ink-faint); cursor: wait; }
+
+  .msg-box { padding: 11px; border-radius: 10px; font-size: 13px; margin-top: 12px; display: none; }
+  .msg-box.visible { display: block; }
+  .msg-box.success { background: var(--green-soft); color: #3F5A22; }
+  .msg-box.error { background: var(--acil-bg); color: var(--acil); }
+
+  .quick-links { display: flex; flex-direction: column; gap: 2px; }
+  .quick-link { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px; text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--line); }
+  .quick-link:last-child { border-bottom: none; }
+  .quick-link:hover { color: var(--teal); }
+  .quick-link .arrow { color: var(--ink-faint); }
+
+  .signout-btn { width: 100%; background: var(--acil-bg); color: var(--acil); border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .signout-btn:hover { background: #F5D5D2; }
+
+  .denied-box { background: var(--acil-bg); color: var(--acil); border-radius: 12px; padding: 20px; font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+        <path d="M6 18C6 13 10 9 16 9C22 9 26 13 26 18C26 23 21 26 16 26C11 26 6 23 6 18Z" stroke="#0B6E6C" stroke-width="2"/>
+        <path d="M11 16L14 20L16 15L18 20L21 16" stroke="#6E9B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">Pati Sağlık</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">Asistana Sor</a>
+      <a href="/rehber">Veteriner &amp; petshop</a>
+      <a href="/randevu-al">Randevu Al</a>
+      <a href="/sahiplendir">Sahiplendirme</a>
+      <a href="/forum">Forum</a>
+    </div>
+    <div class="nav-auth" id="nav-auth"></div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="eyebrow">Hesap</div>
+  <h1>Hesabım</h1>
+  <p class="sub">Profil bilgilerini ve hesap ayarlarını buradan yönetebilirsin.</p>
+
+  <div id="content"><div class="section-card">Yükleniyor...</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUserId = null;
+let currentUserEmail = null;
+
+async function initSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const navAuth = document.getElementById("nav-auth");
+
+  if (!session) {
+    navAuth.innerHTML = `<a href="/giris">Giriş yap</a>`;
+    document.getElementById("content").innerHTML = `<div class="denied-box">Hesap ayarlarını görmek için giriş yapman gerekiyor.</div>`;
+    return;
+  }
+
+  currentUserId = session.user.id;
+  currentUserEmail = session.user.email;
+
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner").eq("id", session.user.id).single();
+  const username = profile ? profile.kullanici_adi : session.user.email;
+  const adminLink = profile && profile.admin ? `<a href="/admin" style="margin-right:4px;">Admin paneli</a>` : "";
+  const vetLink = profile
+    ? (profile.veteriner
+        ? `<a href="/veteriner-takvim" style="margin-right:4px;">Müsaitlik Takvimim</a>`
+        : `<a href="/veteriner-basvuru" style="margin-right:4px;">Veteriner misin?</a>`)
+    : "";
+  navAuth.innerHTML = `
+    <div class="notif-wrap" id="notif-wrap">
+      <span class="notif-bell" id="notif-bell">🔔<span class="notif-badge" id="notif-badge"></span></span>
+      <div class="notif-dropdown" id="notif-dropdown"></div>
+    </div>
+    ${adminLink}${vetLink}<a href="/randevularim" style="margin-right:4px;">Randevularım</a><a href="/hesabim" style="margin-right:4px;">${username}</a><span class="action" id="logout-action">Çıkış yap</span>`;
+  document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
+  setupNotifications();
+
+  await renderContent(profile, session);
+}
+
+function setupNotifications() {
+  document.getElementById("notif-bell").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById("notif-dropdown");
+    const willOpen = !dropdown.classList.contains("visible");
+    dropdown.classList.toggle("visible");
+    if (willOpen) await loadNotifications();
+  });
+  document.addEventListener("click", () => document.getElementById("notif-dropdown").classList.remove("visible"));
+  refreshNotifBadge();
+}
+
+async function refreshNotifBadge() {
+  const { count } = await supabaseClient.from("bildirimler").select("id", { count: "exact", head: true }).eq("kullanici_id", currentUserId).eq("okundu", false);
+  const badge = document.getElementById("notif-badge");
+  if (count && count > 0) { badge.textContent = count > 9 ? "9+" : count; badge.classList.add("visible"); }
+  else { badge.classList.remove("visible"); }
+}
+
+async function loadNotifications() {
+  const dropdown = document.getElementById("notif-dropdown");
+  const { data } = await supabaseClient.from("bildirimler").select("*").eq("kullanici_id", currentUserId).order("created_at", { ascending: false }).limit(10);
+  if (!data || data.length === 0) { dropdown.innerHTML = '<div class="notif-empty">Henüz bildirimin yok.</div>'; return; }
+  dropdown.innerHTML = data.map(n => `
+    <div class="notif-item ${n.okundu ? "" : "unread"}" data-id="${n.id}" data-link="${n.link || ""}">
+      ${n.mesaj}
+      <span class="notif-time">${new Date(n.created_at).toLocaleString("tr-TR")}</span>
+    </div>
+  `).join("");
+  dropdown.querySelectorAll(".notif-item").forEach(item => {
+    item.addEventListener("click", async () => {
+      await supabaseClient.from("bildirimler").update({ okundu: true }).eq("id", item.dataset.id);
+      if (item.dataset.link) window.location.href = item.dataset.link;
+    });
+  });
+  refreshNotifBadge();
+}
+
+async function renderContent(profile, session) {
+  const content = document.getElementById("content");
+  const username = profile ? profile.kullanici_adi : session.user.email;
+  const uyeOlmaTarihi = new Date(session.user.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+
+  let vetBadgeHtml = `<a href="/veteriner-basvuru" class="role-badge vet-yok">🩺 Veteriner değilsin</a>`;
+  if (profile && profile.veteriner) {
+    vetBadgeHtml = `<a href="/veteriner-takvim" class="role-badge vet-onayli">✅ Onaylı Veteriner</a>`;
+  } else {
+    const { data: basvuru } = await supabaseClient.from("veteriner_basvurulari").select("durum").eq("kullanici_id", currentUserId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (basvuru && basvuru.durum === "beklemede") {
+      vetBadgeHtml = `<a href="/veteriner-basvuru" class="role-badge vet-beklemede">⏳ Başvuru İnceleniyor</a>`;
+    } else if (basvuru && basvuru.durum === "reddedildi") {
+      vetBadgeHtml = `<a href="/veteriner-basvuru" class="role-badge vet-yok">🩺 Veteriner başvurunu güncelle</a>`;
+    }
+  }
+  const adminBadgeHtml = profile && profile.admin ? `<a href="/admin" class="role-badge admin">🛡️ Admin</a>` : "";
+
+  content.innerHTML = `
+    <div class="profile-header">
+      <div class="avatar-circle">${username.charAt(0).toUpperCase()}</div>
+      <div class="profile-header-info">
+        <div class="profile-header-name">${username}</div>
+        <div class="profile-header-email">${currentUserEmail}</div>
+        <div class="profile-header-meta">Üye olma tarihi: ${uyeOlmaTarihi}</div>
+      </div>
+    </div>
+
+    <div class="badge-row">${adminBadgeHtml}${vetBadgeHtml}</div>
+
+    <div class="section-card">
+      <div class="section-title">Kullanıcı adı</div>
+      <div class="section-desc">Diğer kullanıcılara bu isimle görünürsün.</div>
+      <div class="field">
+        <input type="text" id="username-input" value="${username}">
+      </div>
+      <button class="save-btn" id="username-save-btn">Kaydet</button>
+      <div class="msg-box" id="username-msg-box"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">Şifre değiştir</div>
+      <div class="section-desc">Yeni şifreni gir, hesabına devam et.</div>
+      <div class="field"><label for="new-password">Yeni şifre</label><input type="password" id="new-password" placeholder="En az 6 karakter"></div>
+      <div class="field"><label for="new-password-confirm">Yeni şifre (tekrar)</label><input type="password" id="new-password-confirm" placeholder="Şifreni tekrar yaz"></div>
+      <button class="save-btn" id="password-save-btn">Şifreyi Güncelle</button>
+      <div class="msg-box" id="password-msg-box"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">Hızlı bağlantılar</div>
+      <div class="quick-links">
+        <a href="/randevularim" class="quick-link"><span>Randevularım</span><span class="arrow">→</span></a>
+        <a href="/sahiplendir" class="quick-link"><span>Sahiplendirme İlanlarım</span><span class="arrow">→</span></a>
+        <a href="/" class="quick-link"><span>Sohbet arka planımı özelleştir</span><span class="arrow">→</span></a>
+      </div>
+    </div>
+
+    <button class="signout-btn" id="signout-btn">Çıkış Yap</button>
+  `;
+
+  document.getElementById("username-save-btn").addEventListener("click", saveUsername);
+  document.getElementById("password-save-btn").addEventListener("click", savePassword);
+  document.getElementById("signout-btn").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.href = "/"; });
+}
+
+async function saveUsername() {
+  const yeniAd = document.getElementById("username-input").value.trim();
+  const msgBox = document.getElementById("username-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  if (!yeniAd) {
+    msgBox.textContent = "Kullanıcı adı boş olamaz.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  const btn = document.getElementById("username-save-btn");
+  btn.disabled = true; btn.textContent = "Kaydediliyor...";
+
+  const { error } = await supabaseClient.from("kullanici_profilleri").update({ kullanici_adi: yeniAd }).eq("id", currentUserId);
+
+  btn.disabled = false; btn.textContent = "Kaydet";
+
+  if (error) {
+    msgBox.textContent = "Kaydedilemedi: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  msgBox.textContent = "Kullanıcı adın güncellendi.";
+  msgBox.classList.add("visible", "success");
+  document.querySelector(".profile-header-name").textContent = yeniAd;
+  document.querySelector(".avatar-circle").textContent = yeniAd.charAt(0).toUpperCase();
+}
+
+async function savePassword() {
+  const yeniSifre = document.getElementById("new-password").value;
+  const yeniSifreTekrar = document.getElementById("new-password-confirm").value;
+  const msgBox = document.getElementById("password-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  if (yeniSifre.length < 6) {
+    msgBox.textContent = "Şifre en az 6 karakter olmalı.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+  if (yeniSifre !== yeniSifreTekrar) {
+    msgBox.textContent = "Şifreler eşleşmiyor.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  const btn = document.getElementById("password-save-btn");
+  btn.disabled = true; btn.textContent = "Güncelleniyor...";
+
+  const { error } = await supabaseClient.auth.updateUser({ password: yeniSifre });
+
+  btn.disabled = false; btn.textContent = "Şifreyi Güncelle";
+
+  if (error) {
+    msgBox.textContent = "Güncellenemedi: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  msgBox.textContent = "Şifren güncellendi.";
+  msgBox.classList.add("visible", "success");
+  document.getElementById("new-password").value = "";
+  document.getElementById("new-password-confirm").value = "";
+}
+
+initSession();
+</script>
+</body>
+</html>

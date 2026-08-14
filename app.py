@@ -651,6 +651,22 @@ def giris_sayfa():
     return {"status": "hata", "mesaj": "auth.html bulunamadı"}
 
 
+@app.get("/hesabim")
+def hesabim_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "hesabim.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "hesabim.html bulunamadı"}
+    
+
+@app.get("/sifre-sifirla")
+def sifre_sifirla_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "sifre-sifirla.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "sifre-sifirla.html bulunamadı"}
+
+
 @app.get("/forum")
 def forum_sayfa():
     html_path = os.path.join(os.path.dirname(__file__), "forum.html")

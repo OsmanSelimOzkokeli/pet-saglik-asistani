@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Şifre Sıfırla — Pati Sağlık</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #F1F7F4; --card: #FFFFFF; --ink: #14231F; --ink-soft: #54655D; --ink-faint: #8A9C92;
+    --teal: #0B6E6C; --teal-bright: #12968F; --green-soft: #EAF3E1;
+    --line: #DCE7E0; --acil: #B8433A; --acil-bg: #FBEAE8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+
+  .card { max-width: 400px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 32px; margin: 24px; }
+  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; margin-bottom: 22px; justify-content: center; }
+  .brand-mark { width: 26px; height: 26px; }
+  .brand-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; color: var(--teal); }
+
+  h1 { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 600; margin: 0 0 8px; color: var(--teal); text-align: center; }
+  .sub { color: var(--ink-soft); font-size: 13.5px; text-align: center; margin-bottom: 22px; line-height: 1.5; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  input { width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
+  input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+
+  .submit-btn { width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 6px; }
+  .submit-btn:hover { background: var(--teal-bright); }
+  .submit-btn:disabled { background: var(--ink-faint); cursor: wait; }
+
+  .msg-box { padding: 12px; border-radius: 10px; font-size: 13.5px; margin-top: 14px; display: none; text-align: center; }
+  .msg-box.visible { display: block; }
+  .msg-box.success { background: var(--green-soft); color: #3F5A22; }
+  .msg-box.error { background: var(--acil-bg); color: var(--acil); }
+
+  .back-link { display: block; text-align: center; margin-top: 18px; font-size: 13px; color: var(--teal-bright); font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <a href="/" class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+      <path d="M6 18C6 13 10 9 16 9C22 9 26 13 26 18C26 23 21 26 16 26C11 26 6 23 6 18Z" stroke="#0B6E6C" stroke-width="2"/>
+      <path d="M11 16L14 20L16 15L18 20L21 16" stroke="#6E9B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="brand-name">Pati Sağlık</span>
+  </a>
+
+  <div id="content">
+    <h1>Kontrol ediliyor...</h1>
+    <p class="sub">Sıfırlama bağlantın doğrulanıyor.</p>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdnhsbmxzZHptY296d2t2YmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNjEyNzEsImV4cCI6MjEwMTkzNzI3MX0.CUF-vLEVwGmlZWH4iUzGSpUEfLlXc-z-J0lvTwp_56E";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let recoveryReady = false;
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (event === "PASSWORD_RECOVERY") {
+    recoveryReady = true;
+    showResetForm();
+  }
+});
+
+// Bağlantı bir süre içinde işlenmezse (bozuk/eski link), kullanıcıyı bilgilendir
+setTimeout(() => {
+  if (!recoveryReady) showInvalidLink();
+}, 3000);
+
+function showResetForm() {
+  document.getElementById("content").innerHTML = `
+    <h1>Yeni şifre belirle</h1>
+    <p class="sub">Hesabın için yeni bir şifre gir.</p>
+    <div class="field"><label for="new-password">Yeni şifre</label><input type="password" id="new-password" placeholder="En az 6 karakter"></div>
+    <div class="field"><label for="new-password-confirm">Yeni şifre (tekrar)</label><input type="password" id="new-password-confirm" placeholder="Şifreni tekrar yaz"></div>
+    <button class="submit-btn" id="submit-btn">Şifreyi Kaydet</button>
+    <div class="msg-box" id="msg-box"></div>
+  `;
+  document.getElementById("submit-btn").addEventListener("click", submitNewPassword);
+}
+
+function showInvalidLink() {
+  document.getElementById("content").innerHTML = `
+    <h1>Bağlantı geçersiz</h1>
+    <p class="sub">Bu sıfırlama bağlantısının süresi dolmuş veya geçersiz olabilir. Giriş sayfasından yeni bir sıfırlama bağlantısı isteyebilirsin.</p>
+    <a href="/giris" class="back-link">Giriş sayfasına dön →</a>
+  `;
+}
+
+async function submitNewPassword() {
+  const yeniSifre = document.getElementById("new-password").value;
+  const yeniSifreTekrar = document.getElementById("new-password-confirm").value;
+  const msgBox = document.getElementById("msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  if (yeniSifre.length < 6) {
+    msgBox.textContent = "Şifre en az 6 karakter olmalı.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+  if (yeniSifre !== yeniSifreTekrar) {
+    msgBox.textContent = "Şifreler eşleşmiyor.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true; btn.textContent = "Kaydediliyor...";
+
+  const { error } = await supabaseClient.auth.updateUser({ password: yeniSifre });
+
+  if (error) {
+    btn.disabled = false; btn.textContent = "Şifreyi Kaydet";
+    msgBox.textContent = "Bir sorun oluştu: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  document.getElementById("content").innerHTML = `
+    <h1>Şifren güncellendi</h1>
+    <p class="sub">Artık yeni şifrenle giriş yapabilirsin.</p>
+    <a href="/giris" class="back-link">Giriş yap →</a>
+  `;
+}
+</script>
+</body>
+</html>

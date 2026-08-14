@@ -317,7 +317,7 @@ async function initSession() {
         <span class="notif-bell" id="notif-bell">🔔<span class="notif-badge" id="notif-badge"></span></span>
         <div class="notif-dropdown" id="notif-dropdown"></div>
       </div>
-      ${adminLink}${vetLink}<a href="/randevularim" style="margin-right:4px;">Randevularım</a><span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+      ${adminLink}${vetLink}<a href="/randevularim" style="margin-right:4px;">Randevularım</a><a href="/hesabim" class="who" style="text-decoration:none;">${username}</a><span class="action" id="logout-action">Çıkış yap</span>`;
     document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
     setupNotifications(session.user.id);
   } else {
