@@ -26,6 +26,8 @@
   .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
   .nav-links a:hover { color: var(--teal); }
   .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .nav-avatar { width: 30px; height: 30px; border-radius: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--teal-soft); color: var(--teal); font-family: 'Fraunces', serif; font-weight: 600; font-size: 13px; text-decoration: none; flex-shrink: 0; }
+  .nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .nav-auth .who { color: var(--ink); font-weight: 600; }
   .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
   @media (max-width: 760px) { .nav-links { display: none; } }
@@ -156,6 +158,9 @@ async function initSession() {
 
   const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner, profil_foto_url, kullanici_adi_degisim_tarihi").eq("id", session.user.id).single();
   const username = profile ? profile.kullanici_adi : session.user.email;
+    const avatarHtml = profile && profile.profil_foto_url
+      ? `<img src="${profile.profil_foto_url}" alt="">`
+      : username.charAt(0).toUpperCase();
   const adminLink = profile && profile.admin ? `<a href="/admin" style="margin-right:4px;">Admin paneli</a>` : "";
   const vetLink = profile
     ? (profile.veteriner
@@ -304,10 +309,17 @@ async function renderContent(profile, session) {
     <button class="signout-btn" id="signout-btn" style="margin-bottom:16px;">Çıkış Yap</button>
 
     <div class="section-card danger-zone">
-      <div class="section-title">Hesabımı kapat</div>
-      <div class="section-desc">Hesabın kapatılır, tekrar giriş yapmayı denediğinde istersen yeniden aktifleştirebilirsin. İlanların ve geçmiş verilerin silinmez.</div>
-      <button class="danger-btn" id="deactivate-btn">Hesabımı Kapat</button>
-      <div class="msg-box" id="deactivate-msg-box"></div>
+      <div class="section-title">Hesabımı dondur</div>
+      <div class="section-desc">Hesabın 1 yıl boyunca dondurulur, bu süre içinde tekrar giriş yaparsan yeniden aktifleştirebilirsin. 1 yıl içinde aktifleştirilmezse hesap otomatik olarak kalıcı şekilde silinir. İlanların ve geçmiş verilerin bu süreçte silinmez.</div>
+      <button class="danger-btn" id="freeze-btn">Hesabımı Dondur</button>
+      <div class="msg-box" id="freeze-msg-box"></div>
+    </div>
+
+    <div class="section-card danger-zone">
+      <div class="section-title">Hesabımı sil</div>
+      <div class="section-desc">Bu işlem geri alınamaz. Hesabın ve ona bağlı tüm verilerin (ilanların, randevuların, forum yazıların) kalıcı olarak silinir.</div>
+      <button class="danger-btn" id="delete-btn">Hesabımı Kalıcı Olarak Sil</button>
+      <div class="msg-box" id="delete-msg-box"></div>
     </div>
   `;
 
@@ -315,7 +327,8 @@ async function renderContent(profile, session) {
   document.getElementById("email-save-btn").addEventListener("click", saveEmail);
   document.getElementById("password-reset-btn").addEventListener("click", sendPasswordReset);
   document.getElementById("signout-btn").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.href = "/"; });
-  document.getElementById("deactivate-btn").addEventListener("click", deactivateAccount);
+  document.getElementById("freeze-btn").addEventListener("click", freezeAccount);
+  document.getElementById("delete-btn").addEventListener("click", deleteAccountPermanently);
 
   document.getElementById("avatar-upload-btn").addEventListener("click", () => document.getElementById("avatar-file-input").click());
   document.getElementById("avatar-file-input").addEventListener("change", uploadAvatar);
@@ -402,20 +415,23 @@ async function sendPasswordReset() {
   msgBox.classList.add("visible", "success");
 }
 
-async function deactivateAccount() {
-  const msgBox = document.getElementById("deactivate-msg-box");
+async function freezeAccount() {
+  const msgBox = document.getElementById("freeze-msg-box");
   msgBox.classList.remove("visible", "success", "error");
 
-  const onayli = confirm("Hesabını kapatmak istediğinden emin misin? Çıkış yapılacak, tekrar giriş yaptığında yeniden aktifleştirme seçeneği çıkacak.");
+  const onayli = confirm("Hesabını dondurmak istediğinden emin misin? 1 yıl içinde giriş yapıp aktifleştirmezsen hesap kalıcı olarak silinir.");
   if (!onayli) return;
 
-  const btn = document.getElementById("deactivate-btn");
-  btn.disabled = true; btn.textContent = "Kapatılıyor...";
+  const btn = document.getElementById("freeze-btn");
+  btn.disabled = true; btn.textContent = "Donduruluyor...";
 
-  const { error } = await supabaseClient.from("kullanici_profilleri").update({ hesap_kapatildi: true }).eq("id", currentUserId);
+  const { error } = await supabaseClient.from("kullanici_profilleri").update({
+    hesap_kapatildi: true,
+    hesap_dondurulma_tarihi: new Date().toISOString(),
+  }).eq("id", currentUserId);
 
   if (error) {
-    btn.disabled = false; btn.textContent = "Hesabımı Kapat";
+    btn.disabled = false; btn.textContent = "Hesabımı Dondur";
     msgBox.textContent = "Bir sorun oluştu: " + error.message;
     msgBox.classList.add("visible", "error");
     return;
@@ -423,6 +439,47 @@ async function deactivateAccount() {
 
   await supabaseClient.auth.signOut();
   window.location.href = "/giris";
+}
+
+async function deleteAccountPermanently() {
+  const msgBox = document.getElementById("delete-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  const onayli1 = confirm("Hesabını KALICI olarak silmek istediğinden emin misin? Bu işlem geri alınamaz.");
+  if (!onayli1) return;
+  const onayli2 = confirm("Son kez soruyoruz: hesabın ve tüm verilerin (ilanların, randevuların, forum yazıların) tamamen silinecek. Devam edilsin mi?");
+  if (!onayli2) return;
+
+  const btn = document.getElementById("delete-btn");
+  btn.disabled = true; btn.textContent = "Siliniyor...";
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) {
+    msgBox.textContent = "Oturum bulunamadı, lütfen tekrar giriş yap.";
+    msgBox.classList.add("visible", "error");
+    btn.disabled = false; btn.textContent = "Hesabımı Kalıcı Olarak Sil";
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/hesap-sil", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: session.access_token }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.status !== "basarili") {
+      throw new Error(data.mesaj || "Bilinmeyen hata");
+    }
+
+    await supabaseClient.auth.signOut();
+    window.location.href = "/";
+  } catch (err) {
+    btn.disabled = false; btn.textContent = "Hesabımı Kalıcı Olarak Sil";
+    msgBox.textContent = "Silinemedi: " + err.message;
+    msgBox.classList.add("visible", "error");
+  }
 }
 
 async function saveUsername() {

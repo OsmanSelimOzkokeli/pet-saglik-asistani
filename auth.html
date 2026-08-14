@@ -175,22 +175,30 @@ document.getElementById("login-btn").addEventListener("click", async () => {
 
   if (error) { showMsg("login-msg", "Hata: " + error.message, true); return; }
 
-  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("hesap_kapatildi").eq("id", data.user.id).single();
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("hesap_kapatildi, hesap_dondurulma_tarihi").eq("id", data.user.id).single();
 
   if (profile && profile.hesap_kapatildi) {
-    showReactivatePrompt();
+    showReactivatePrompt(profile.hesap_dondurulma_tarihi);
     return;
   }
 
   window.location.href = "/";
 });
 
-function showReactivatePrompt() {
+function showReactivatePrompt(dondurulmaTarihi) {
+  let kalanGunNotu = "";
+  if (dondurulmaTarihi) {
+    const gecenGun = (Date.now() - new Date(dondurulmaTarihi).getTime()) / (1000 * 60 * 60 * 24);
+    const kalanGun = Math.max(0, Math.round(365 - gecenGun));
+    kalanGunNotu = `<p style="font-size:13px;color:var(--ink-faint);margin-bottom:16px;">Aktifleştirmezsen, hesabın yaklaşık ${kalanGun} gün içinde kalıcı olarak silinecek.</p>`;
+  }
+
   document.getElementById("panel-login").innerHTML = `
     <div class="card">
-      <p style="font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:16px;">
-        Bu hesap daha önce kapatılmış. Yeniden aktifleştirmek ister misin? Tüm verilerin (ilanların, randevuların) olduğu gibi duruyor.
+      <p style="font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:10px;">
+        Bu hesap dondurulmuş. Yeniden aktifleştirmek ister misin? Tüm verilerin (ilanların, randevuların) olduğu gibi duruyor.
       </p>
+      ${kalanGunNotu}
       <button class="submit" id="reactivate-btn">Evet, hesabımı aktifleştir</button>
       <button class="submit" id="reactivate-cancel-btn" style="background:var(--acil-bg);color:var(--acil);margin-top:10px;">Hayır, çıkış yap</button>
       <div class="msg-box" id="reactivate-msg"></div>
@@ -199,7 +207,7 @@ function showReactivatePrompt() {
 
   document.getElementById("reactivate-btn").addEventListener("click", async () => {
     const { data: { user } } = await supabaseClient.auth.getUser();
-    const { error } = await supabaseClient.from("kullanici_profilleri").update({ hesap_kapatildi: false }).eq("id", user.id);
+    const { error } = await supabaseClient.from("kullanici_profilleri").update({ hesap_kapatildi: false, hesap_dondurulma_tarihi: null }).eq("id", user.id);
     if (error) { showMsg("reactivate-msg", "Bir sorun oluştu: " + error.message, true); return; }
     window.location.href = "/";
   });

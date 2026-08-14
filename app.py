@@ -11,22 +11,23 @@ edilir ve AI'nın yorumundan BAĞIMSIZ olarak her zaman "ACİL" seviyesine
 zorlanır. AI, bu tür durumlarda aciliyeti düşürecek şekilde konuşamaz.
 
 Çalıştırma:
-    pip install fastapi uvicorn openai --break-system-packages
+    pip install fastapi uvicorn openai httpx --break-system-packages
     export OPENAI_API_KEY=...
     uvicorn app:app --reload --port 8000
 """
 
 import base64
+import json
 import os
 from enum import Enum
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import httpx
 
 app = FastAPI(title="Pet Sağlık Asistanı")
@@ -241,7 +242,6 @@ def call_openai_triage(req: TriageRequest) -> dict:
         max_tokens=500,
     )
 
-    import json
     return json.loads(response.choices[0].message.content)
 
 
@@ -634,14 +634,14 @@ def randevularim_sayfa():
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "randevularim.html bulunamadı"}
 
-    
+
 @app.get("/admin")
 def admin_sayfa():
     html_path = os.path.join(os.path.dirname(__file__), "admin.html")
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "admin.html bulunamadı"}
-    
+
 
 @app.get("/giris")
 def giris_sayfa():
@@ -657,7 +657,7 @@ def hesabim_sayfa():
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "hesabim.html bulunamadı"}
-    
+
 
 @app.get("/sifre-sifirla")
 def sifre_sifirla_sayfa():
@@ -673,6 +673,11 @@ def forum_sayfa():
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "forum.html bulunamadı"}
+
+
+# ---------------------------------------------------------------------------
+# Aşama 5: Randevu hatırlatmaları + hesap dondurma/silme (arka plan görevleri)
+# ---------------------------------------------------------------------------
 
 SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co"
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
@@ -771,18 +776,101 @@ async def randevu_hatirlatmalarini_kontrol_et():
                 print(f"Hatırlatma gönderildi: randevu {r['id']}")
 
 
-async def randevu_hatirlatma_dongusu():
+async def dondurulmus_hesaplari_kontrol_et():
+    """1 yıldır dondurulmuş (hesap_kapatildi=true) hesapları kalıcı olarak siler."""
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+    }
+    esik_tarih = (datetime.now() - timedelta(days=365)).isoformat()
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        res = await client.get(
+            f"{SUPABASE_URL}/rest/v1/kullanici_profilleri",
+            headers=headers,
+            params={
+                "hesap_kapatildi": "eq.true",
+                "hesap_dondurulma_tarihi": f"lt.{esik_tarih}",
+                "select": "id",
+            },
+        )
+        profiller = res.json()
+        if not isinstance(profiller, list):
+            print("Dondurulmuş hesap sorgusu beklenmeyen sonuç döndürdü:", profiller)
+            return
+
+        for p in profiller:
+            user_id = p["id"]
+            del_res = await client.delete(
+                f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+                headers=headers,
+            )
+            if del_res.status_code in (200, 204):
+                print(f"1 yıldır dondurulmuş hesap kalıcı olarak silindi: {user_id}")
+            else:
+                print(f"Dondurulmuş hesap silinemedi ({user_id}): {del_res.text}")
+
+
+async def arka_plan_dongusu():
     if not SUPABASE_SERVICE_KEY:
-        print("UYARI: SUPABASE_SERVICE_KEY tanımlı değil, randevu hatırlatma sistemi devre dışı.")
+        print("UYARI: SUPABASE_SERVICE_KEY tanımlı değil, arka plan görevleri (hatırlatma + hesap silme) devre dışı.")
         return
     while True:
         try:
             await randevu_hatirlatmalarini_kontrol_et()
         except Exception as e:
             print("Hatırlatma kontrolünde hata:", e)
+        try:
+            await dondurulmus_hesaplari_kontrol_et()
+        except Exception as e:
+            print("Dondurulmuş hesap kontrolünde hata:", e)
         await asyncio.sleep(300)  # 5 dakikada bir kontrol et
 
 
 @app.on_event("startup")
-async def baslangicta_hatirlatma_baslat():
-    asyncio.create_task(randevu_hatirlatma_dongusu())    
+async def baslangicta_arka_plan_gorevlerini_baslat():
+    asyncio.create_task(arka_plan_dongusu())
+
+
+@app.post("/api/hesap-sil")
+async def hesap_sil(request: Request):
+    """Kullanıcının kendi hesabını kalıcı olarak silmesi için.
+    Frontend, oturumun access_token'ını gönderir; biz onunla kullanıcının
+    kimliğini doğrulayıp SADECE o kullanıcıyı silebiliriz."""
+    if not SUPABASE_SERVICE_KEY:
+        return JSONResponse({"status": "hata", "mesaj": "Sunucu yapılandırması eksik (SUPABASE_SERVICE_KEY)."}, status_code=500)
+
+    body = await request.json()
+    access_token = body.get("access_token")
+    if not access_token:
+        return JSONResponse({"status": "hata", "mesaj": "access_token gerekli."}, status_code=400)
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        # 1) Bu token gerçekten geçerli mi, kime ait?
+        user_res = await client.get(
+            f"{SUPABASE_URL}/auth/v1/user",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {access_token}",
+            },
+        )
+        if user_res.status_code != 200:
+            return JSONResponse({"status": "hata", "mesaj": "Geçersiz veya süresi dolmuş oturum."}, status_code=401)
+
+        user_id = user_res.json().get("id")
+        if not user_id:
+            return JSONResponse({"status": "hata", "mesaj": "Kullanıcı bulunamadı."}, status_code=400)
+
+        # 2) Sadece doğrulanan bu kullanıcıyı sil (bağlı tüm veriler CASCADE ile otomatik silinir)
+        delete_res = await client.delete(
+            f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+            },
+        )
+        if delete_res.status_code not in (200, 204):
+            return JSONResponse({"status": "hata", "mesaj": f"Silme başarısız: {delete_res.text}"}, status_code=500)
+
+    return {"status": "basarili"}

@@ -26,6 +26,8 @@
   .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
   .nav-links a:hover { color: var(--teal); }
   .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .nav-avatar { width: 30px; height: 30px; border-radius: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--teal-soft); color: var(--teal); font-family: 'Fraunces', serif; font-weight: 600; font-size: 13px; text-decoration: none; flex-shrink: 0; }
+  .nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .notif-wrap { position: relative; }
   .notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 2px 4px; }
   .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--acil); color: #fff; font-size: 10px; font-weight: 700; border-radius: 100px; padding: 1px 5px; display: none; line-height: 1.3; }
@@ -123,15 +125,18 @@ async function initSession() {
   }
 
   currentUserId = session.user.id;
-  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner").eq("id", session.user.id).single();
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner, profil_foto_url").eq("id", session.user.id).single();
   const username = profile ? profile.kullanici_adi : session.user.email;
+    const avatarHtml = profile && profile.profil_foto_url
+      ? `<img src="${profile.profil_foto_url}" alt="">`
+      : username.charAt(0).toUpperCase();
   const adminLink = profile && profile.admin ? `<a href="/admin" style="margin-right:4px;">Admin paneli</a>` : "";
   navAuth.innerHTML = `
     <div class="notif-wrap" id="notif-wrap">
       <span class="notif-bell" id="notif-bell">🔔<span class="notif-badge" id="notif-badge"></span></span>
       <div class="notif-dropdown" id="notif-dropdown"></div>
     </div>
-    ${adminLink}<a href="/randevularim" style="margin-right:4px;">Randevularım</a><a href="/hesabim" class="who" style="text-decoration:none;">${username}</a><span class="action" id="logout-action">Çıkış yap</span>`;
+    ${adminLink}<a href="/randevularim" style="margin-right:4px;">Randevularım</a><span class="action" id="logout-action">Çıkış yap</span><a href="/hesabim" class="nav-avatar" title="${username}">${avatarHtml}</a>`;
   document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
   setupNotifications();
 
