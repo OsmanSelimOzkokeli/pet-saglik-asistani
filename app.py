@@ -25,6 +25,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+import asyncio
+from datetime import datetime
+import httpx
 
 app = FastAPI(title="Pet Sağlık Asistanı")
 
@@ -654,3 +657,116 @@ def forum_sayfa():
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "forum.html bulunamadı"}
+
+SUPABASE_URL = "https://qkvxlnlsdzmcozwkvbgf.supabase.co"
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+
+
+async def randevu_hatirlatmalarini_kontrol_et():
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Hatırlatma kontrolü çalıştı.")
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        res = await client.get(
+            f"{SUPABASE_URL}/rest/v1/randevular",
+            headers=headers,
+            params={
+                "durum": "eq.onaylandı",
+                "hatirlatma_gonderildi": "eq.false",
+                "select": "*",
+            },
+        )
+        randevular = res.json()
+        if not isinstance(randevular, list):
+            print("Randevu sorgusu beklenmeyen sonuç döndürdü:", randevular)
+            return
+
+        simdi = datetime.now()
+
+        for r in randevular:
+            try:
+                randevu_zamani = datetime.strptime(f"{r['tarih']} {r['saat']}", "%Y-%m-%d %H:%M")
+            except Exception:
+                continue
+
+            fark_dakika = (randevu_zamani - simdi).total_seconds() / 60
+
+            # Randevuya 50-70 dakika kala tek seferlik hatırlatma gönder
+            if 50 <= fark_dakika <= 70:
+                kullanici_res = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/kullanici_profilleri",
+                    headers=headers,
+                    params={"id": f"eq.{r['kullanici_id']}", "select": "kullanici_adi"},
+                )
+                vet_res = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/kullanici_profilleri",
+                    headers=headers,
+                    params={"id": f"eq.{r['veteriner_id']}", "select": "kullanici_adi"},
+                )
+                basvuru_res = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/veteriner_basvurulari",
+                    headers=headers,
+                    params={
+                        "kullanici_id": f"eq.{r['veteriner_id']}",
+                        "durum": "eq.onaylı",
+                        "select": "klinik_adi",
+                        "limit": "1",
+                    },
+                )
+
+                kullanici_data = kullanici_res.json()
+                vet_data = vet_res.json()
+                basvuru_data = basvuru_res.json()
+
+                kullanici_adi = kullanici_data[0]["kullanici_adi"] if kullanici_data else "Kullanıcı"
+                vet_adi = vet_data[0]["kullanici_adi"] if vet_data else "Veteriner"
+                klinik_adi = basvuru_data[0]["klinik_adi"] if basvuru_data else vet_adi
+
+                await client.post(
+                    f"{SUPABASE_URL}/rest/v1/bildirimler",
+                    headers=headers,
+                    json={
+                        "kullanici_id": r["kullanici_id"],
+                        "mesaj": f"1 saat sonra, saat {r['saat']}'de {klinik_adi} ile randevunuz var.",
+                        "link": "/randevularim",
+                    },
+                )
+                await client.post(
+                    f"{SUPABASE_URL}/rest/v1/bildirimler",
+                    headers=headers,
+                    json={
+                        "kullanici_id": r["veteriner_id"],
+                        "mesaj": f"1 saat sonra, saat {r['saat']}'de {kullanici_adi} ile randevunuz var.",
+                        "link": "/veteriner-takvim",
+                    },
+                )
+
+                await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/randevular",
+                    headers=headers,
+                    params={"id": f"eq.{r['id']}"},
+                    json={"hatirlatma_gonderildi": True},
+                )
+
+                print(f"Hatırlatma gönderildi: randevu {r['id']}")
+
+
+async def randevu_hatirlatma_dongusu():
+    if not SUPABASE_SERVICE_KEY:
+        print("UYARI: SUPABASE_SERVICE_KEY tanımlı değil, randevu hatırlatma sistemi devre dışı.")
+        return
+    while True:
+        try:
+            await randevu_hatirlatmalarini_kontrol_et()
+        except Exception as e:
+            print("Hatırlatma kontrolünde hata:", e)
+        await asyncio.sleep(300)  # 5 dakikada bir kontrol et
+
+
+@app.on_event("startup")
+async def baslangicta_hatirlatma_baslat():
+    asyncio.create_task(randevu_hatirlatma_dongusu())    
