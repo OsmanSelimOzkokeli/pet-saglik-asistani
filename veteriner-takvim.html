@@ -124,6 +124,7 @@
     <div class="nav-links">
       <a href="/">Asistana Sor</a>
       <a href="/rehber">Veteriner &amp; petshop</a>
+      <a href="/randevu-al">Randevu Al</a>
       <a href="/sahiplendir">Sahiplendirme</a>
       <a href="/forum">Forum</a>
     </div>
@@ -166,14 +167,15 @@ async function initSession() {
   }
 
   currentUserId = session.user.id;
-  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, veteriner").eq("id", session.user.id).single();
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner").eq("id", session.user.id).single();
   const username = profile ? profile.kullanici_adi : session.user.email;
+  const adminLink = profile && profile.admin ? `<a href="/admin" style="margin-right:4px;">Admin paneli</a>` : "";
   navAuth.innerHTML = `
     <div class="notif-wrap" id="notif-wrap">
       <span class="notif-bell" id="notif-bell">🔔<span class="notif-badge" id="notif-badge"></span></span>
       <div class="notif-dropdown" id="notif-dropdown"></div>
     </div>
-    <span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
+    ${adminLink}<a href="/randevularim" style="margin-right:4px;">Randevularım</a><span class="who">${username}</span><span class="action" id="logout-action">Çıkış yap</span>`;
   document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
   setupNotifications();
 
