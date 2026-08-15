@@ -46,7 +46,16 @@
   .nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .nav-auth .who { color: var(--ink); font-weight: 600; }
   .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
-  @media (max-width: 760px) { .nav-links { display: none; } }
+  @media (max-width: 760px) { .nav-links { display: none; } .mobile-menu-btn { display: block; } }
+  .mobile-menu-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--ink); padding: 4px 10px; line-height: 1; }
+  .mobile-menu-panel { display: none; flex-direction: column; background: var(--card); border-top: 1px solid var(--line); padding: 6px 24px 10px; }
+  .mobile-menu-panel.visible { display: flex; }
+  .mobile-menu-panel a { padding: 12px 4px; font-size: 14.5px; font-weight: 600; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .mobile-menu-panel a:last-child { border-bottom: none; }
+  .mobile-menu-panel a.current { color: var(--teal); }
+  .navbar-inner { flex-wrap: wrap; row-gap: 6px; }
+  @media (max-width: 480px) { input, select, textarea { font-size: 16px !important; } }
+
 
   .notif-wrap { position: relative; }
   .notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 2px 4px; }
@@ -141,7 +150,9 @@
       <a href="/forum">Forum</a>
     </div>
     <div class="nav-auth" id="nav-auth"></div>
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menü">☰</button>
   </div>
+  <div class="mobile-menu-panel" id="mobile-menu-panel"></div>
 </nav>
 
 <div class="wrap">
@@ -532,6 +543,11 @@ async function saveUsername() {
   document.getElementById("username-input").disabled = true;
   btn.disabled = true;
 }
+
+document.getElementById("mobile-menu-panel").innerHTML = document.querySelector(".nav-links").innerHTML;
+document.getElementById("mobile-menu-btn").addEventListener("click", () => {
+  document.getElementById("mobile-menu-panel").classList.toggle("visible");
+});
 
 initSession();
 </script>
