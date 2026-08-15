@@ -667,6 +667,14 @@ def sifre_sifirla_sayfa():
     return {"status": "hata", "mesaj": "sifre-sifirla.html bulunamadı"}
 
 
+@app.get("/veteriner-sor")
+def veteriner_sor_sayfa():
+    html_path = os.path.join(os.path.dirname(__file__), "veteriner-sor.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "veteriner-sor.html bulunamadı"}
+
+    
 @app.get("/forum")
 def forum_sayfa():
     html_path = os.path.join(os.path.dirname(__file__), "forum.html")
