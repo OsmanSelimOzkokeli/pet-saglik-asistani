@@ -15,6 +15,22 @@
     --line: #DCE7E0; --acil: #B8433A; --acil-bg: #FBEAE8; --gozlemle: #3E7C74; --gozlemle-bg: #E7F1EF;
   }
   * { box-sizing: border-box; }
+  /* Genel akıcılık: buton/link/form geçişleri yumuşat */
+  button, a, input, select, textarea, .filter-chip, .tab-btn, .calendar-cell, .quick-link {
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+  }
+  button:active, .filter-chip:active, .tab-btn:active { transform: scale(0.97); }
+
+  /* Yükleniyor spinner'ı */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto; }
+  .spinner-inline { width: 15px; height: 15px; border-width: 2px; display: inline-block; vertical-align: middle; margin: 0 6px 0 0; }
+
+  /* İçerik belirdiğinde hafif animasyon */
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeInUp 0.28s ease both; }
+  .wrap { animation: fadeInUp 0.35s ease both; }
+
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
   .navbar { position: sticky; top: 0; z-index: 20; background: rgba(241, 247, 244, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
@@ -149,7 +165,7 @@
 
   <div id="view-categories">
     <div class="category-grid" id="category-grid">
-      <div class="empty-state">Yükleniyor...</div>
+      <div class="empty-state"><div class="spinner"></div></div>
     </div>
   </div>
 
@@ -157,7 +173,7 @@
     <div class="nav-row"><span class="nav-back" id="back-to-categories">← Kategoriler</span></div>
     <h2 id="topic-list-category-name" style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 14px; color:var(--ink);"></h2>
     <div id="new-topic-area"></div>
-    <div class="topic-list" id="topic-list"><div class="empty-state">Yükleniyor...</div></div>
+    <div class="topic-list" id="topic-list"><div class="empty-state"><div class="spinner"></div></div></div>
   </div>
 
   <div id="view-topic-detail" style="display:none;">
@@ -344,7 +360,7 @@ async function submitNewTopic() {
 
 async function loadTopics() {
   const list = document.getElementById("topic-list");
-  list.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
+  list.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
   const { data, error } = await supabaseClient.from("forum_konular").select("*, kullanici_profilleri(kullanici_adi)").eq("kategori_id", currentCategoryId).order("created_at", { ascending: false });
   if (error || !data || data.length === 0) { list.innerHTML = '<div class="empty-state">Bu kategoride henüz konu yok. İlk konuyu sen aç!</div>'; return; }
   list.innerHTML = "";
@@ -374,7 +390,7 @@ async function openTopic(id) {
 
 async function loadComments() {
   const list = document.getElementById("comment-list");
-  list.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
+  list.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
   const { data, error } = await supabaseClient.from("forum_yorumlar").select("*, kullanici_profilleri(kullanici_adi)").eq("konu_id", currentTopicId).order("created_at", { ascending: true });
   if (error || !data || data.length === 0) { list.innerHTML = '<div class="empty-state">Henüz yorum yok.</div>'; return; }
   list.innerHTML = "";

@@ -31,6 +31,22 @@
   }
 
   * { box-sizing: border-box; }
+  /* Genel akıcılık: buton/link/form geçişleri yumuşat */
+  button, a, input, select, textarea, .filter-chip, .tab-btn, .calendar-cell, .quick-link {
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+  }
+  button:active, .filter-chip:active, .tab-btn:active { transform: scale(0.97); }
+
+  /* Yükleniyor spinner'ı */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto; }
+  .spinner-inline { width: 15px; height: 15px; border-width: 2px; display: inline-block; vertical-align: middle; margin: 0 6px 0 0; }
+
+  /* İçerik belirdiğinde hafif animasyon */
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeInUp 0.28s ease both; }
+  .wrap { animation: fadeInUp 0.35s ease both; }
+
 
   body {
     margin: 0;
@@ -183,7 +199,11 @@
   .bubble.assistant { align-self: flex-start; background: var(--paper); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
   .bubble.assistant.acil { border-color: var(--acil); background: var(--acil-bg); }
 
-  .typing { align-self: flex-start; font-size: 13px; color: var(--ink-soft); padding: 4px 6px; }
+  .typing { align-self: flex-start; padding: 8px 6px; display: flex; gap: 4px; align-items: center; }
+  .typing-dot { width: 7px; height: 7px; border-radius: 100%; background: var(--ink-faint); animation: typingBounce 1.1s infinite ease-in-out; }
+  .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
 
   .gauge-bar {
     display: none; align-items: center; gap: 12px;
@@ -579,7 +599,8 @@ function setTyping(show) {
   if (show) {
     if (!el) {
       el = document.createElement("div");
-      el.id = "typing-indicator"; el.className = "typing"; el.textContent = "Asistan yazıyor...";
+      el.id = "typing-indicator"; el.className = "typing";
+      el.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
       chatArea.appendChild(el); chatArea.scrollTop = chatArea.scrollHeight;
     }
   } else if (el) { el.remove(); }
