@@ -466,7 +466,7 @@ async function loadTopics() {
     card.className = "topic-card";
     const yazan = konu.kullanici_profilleri ? konu.kullanici_profilleri.kullanici_adi : "bilinmiyor";
     const tarih = new Date(konu.created_at).toLocaleDateString("tr-TR");
-    card.innerHTML = `<div class="topic-title">${konu.baslik}</div><div class="topic-meta">${yazan} · ${tarih}</div>`;
+    card.innerHTML = `<div class="topic-title">${konu.baslik}</div><div class="topic-meta"><a href="/profil/${konu.yazan_id}" style="color:inherit;text-decoration:none;" onclick="event.stopPropagation();">${yazan}</a> · ${tarih}</div>`;
     card.addEventListener("click", () => openTopic(konu.id));
     list.appendChild(card);
   });
@@ -480,7 +480,7 @@ async function openTopic(id) {
   if (error || !konu) { detailCard.innerHTML = '<div class="empty-state">Konu yüklenemedi.</div>'; return; }
   const yazan = konu.kullanici_profilleri ? konu.kullanici_profilleri.kullanici_adi : "bilinmiyor";
   const tarih = new Date(konu.created_at).toLocaleDateString("tr-TR");
-  detailCard.innerHTML = `<div class="topic-detail-title">${konu.baslik}</div><div class="topic-detail-meta">${yazan} · ${tarih}</div><div class="topic-detail-body">${konu.icerik}</div>`;
+  detailCard.innerHTML = `<div class="topic-detail-title">${konu.baslik}</div><div class="topic-detail-meta"><a href="/profil/${konu.yazan_id}" style="color:inherit;text-decoration:none;">${yazan}</a> · ${tarih}</div><div class="topic-detail-body">${konu.icerik}</div>`;
   await loadComments();
   renderCommentForm();
 }
@@ -496,7 +496,7 @@ async function loadComments() {
     card.className = "comment-card";
     const yazan = yorum.kullanici_profilleri ? yorum.kullanici_profilleri.kullanici_adi : "bilinmiyor";
     const tarih = new Date(yorum.created_at).toLocaleDateString("tr-TR");
-    card.innerHTML = `<div class="comment-meta">${yazan} · ${tarih}</div><div class="comment-body">${yorum.icerik}</div>`;
+    card.innerHTML = `<div class="comment-meta"><a href="/profil/${yorum.yazan_id}" style="color:inherit;text-decoration:none;">${yazan}</a> · ${tarih}</div><div class="comment-body">${yorum.icerik}</div>`;
     list.appendChild(card);
   });
 }
@@ -632,7 +632,7 @@ function renderVetAnswers(sorular) {
         <div class="question-title">${soru.baslik}</div>
         ${soru.hayvan_turu ? `<span class="species-badge">${soru.hayvan_turu}</span>` : ""}
       </div>
-      <div class="question-meta">${soru.soru_sahibi_adi} · ${new Date(soru.created_at).toLocaleDateString("tr-TR")}</div>
+      <div class="question-meta">${soru.adi_gizli ? soru.soru_sahibi_adi : `<a href="/profil/${soru.soru_sahibi_id}" style="color:inherit;text-decoration:none;">${soru.soru_sahibi_adi}</a>`} · ${new Date(soru.created_at).toLocaleDateString("tr-TR")}</div>
       <div class="question-content">${soru.icerik}</div>
       ${answersHtml}
     `;

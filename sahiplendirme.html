@@ -181,8 +181,10 @@
   .nav-back { font-size: 13.5px; font-weight: 600; color: var(--teal-bright); cursor: pointer; }
   .nav-back:hover { color: var(--teal); }
 
-  .ilan-detay-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
-  .ilan-detay-main-photo-wrap { position: relative; width: 100%; height: 380px; background: var(--teal-soft); }
+  .ilan-detay-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 860px) { .ilan-detay-layout { grid-template-columns: 1fr; } }
+
+  .ilan-detay-main-photo-wrap { position: relative; width: 100%; height: 400px; background: var(--teal-soft); border-radius: 16px; overflow: hidden; }
   .ilan-detay-main-photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .ilan-detay-nav-btn {
     position: absolute; top: 50%; transform: translateY(-50%); background: rgba(20,35,31,0.5); color: #fff; border: none;
@@ -192,23 +194,53 @@
   .ilan-detay-nav-btn:disabled { display: none; }
   .ilan-detay-nav-btn.prev { left: 12px; }
   .ilan-detay-nav-btn.next { right: 12px; }
-  .ilan-detay-zoom-btn {
-    position: absolute; bottom: 12px; right: 12px; background: rgba(20,35,31,0.6); color: #fff; border: none;
-    padding: 8px 14px; border-radius: 100px; font-size: 13px; font-weight: 600; cursor: pointer;
-    display: flex; align-items: center; gap: 6px; font-family: inherit;
-  }
-  .ilan-detay-zoom-btn:hover { background: rgba(20,35,31,0.8); }
-  .ilan-detay-counter { position: absolute; bottom: 12px; left: 12px; background: rgba(20,35,31,0.6); color: #fff; font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 100px; display: none; }
+  .ilan-detay-counter { position: absolute; bottom: 12px; right: 12px; background: rgba(20,35,31,0.62); color: #fff; font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 100px; display: none; }
   .ilan-detay-counter.visible { display: block; }
-  .ilan-detay-thumbs { display: flex; gap: 8px; padding: 12px 20px 0; overflow-x: auto; }
-  .ilan-detay-thumbs img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; flex-shrink: 0; cursor: pointer; border: 2px solid transparent; opacity: 0.65; }
+
+  .ilan-detay-thumbs-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .thumbs-scroll-btn {
+    flex-shrink: 0; width: 30px; height: 56px; border-radius: 8px; border: 1px solid var(--line); background: var(--card);
+    color: var(--ink-soft); cursor: pointer; font-size: 15px; display: none;
+  }
+  .thumbs-scroll-btn:hover { border-color: var(--teal-bright); color: var(--teal); }
+  .thumbs-scroll-btn.visible { display: block; }
+  .ilan-detay-thumbs { display: flex; gap: 8px; overflow-x: auto; scroll-behavior: smooth; flex: 1; }
+  .ilan-detay-thumbs img { width: 64px; height: 56px; object-fit: cover; border-radius: 8px; flex-shrink: 0; cursor: pointer; border: 2px solid transparent; opacity: 0.65; }
   .ilan-detay-thumbs img.active { border-color: var(--teal); opacity: 1; }
-  .ilan-detay-info { padding: 20px; }
-  .ilan-detay-name { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--ink); margin: 10px 0 6px; }
-  .ilan-detay-meta { font-size: 14px; color: var(--ink-soft); margin-bottom: 14px; }
-  .ilan-detay-desc { font-size: 14.5px; color: var(--ink); line-height: 1.65; margin-bottom: 18px; white-space: pre-wrap; }
-  .ilan-detay-contact { font-size: 15px; font-weight: 700; color: var(--teal); }
-  @media (max-width: 480px) { .ilan-detay-main-photo-wrap { height: 260px; } }
+  .ilan-detay-zoom-btn {
+    flex-shrink: 0; background: var(--ink); color: #fff; border: none; padding: 0 14px; height: 56px; border-radius: 10px;
+    font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; font-family: inherit; white-space: nowrap;
+  }
+  .ilan-detay-zoom-btn:hover { background: #24352F; }
+
+  .ilan-detay-desc-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-top: 18px; }
+  .ilan-detay-desc-card h3 { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; color: var(--ink); margin: 0 0 12px; }
+  .ilan-detay-desc { font-size: 14.5px; color: var(--ink); line-height: 1.65; white-space: pre-wrap; }
+
+  .ilan-detay-sidebar { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  .ilan-detay-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .ilan-detay-name { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--ink); margin: 0 0 8px; line-height: 1.25; }
+  .ilan-detay-location { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 18px; display: flex; align-items: center; gap: 5px; }
+
+  .ilan-detay-specs { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .ilan-detay-spec-row { display: flex; justify-content: space-between; padding: 10px 2px; font-size: 13.5px; border-bottom: 1px solid var(--line); }
+  .ilan-detay-spec-row:last-child { border-bottom: none; }
+  .ilan-detay-spec-row .spec-label { color: var(--ink-faint); }
+  .ilan-detay-spec-row .spec-value { color: var(--ink); font-weight: 600; }
+
+  .ilan-detay-call-btn, .ilan-detay-whatsapp-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    padding: 13px; border-radius: 10px; font-size: 14.5px; font-weight: 700; text-decoration: none; margin-bottom: 10px; cursor: pointer; border: none; font-family: inherit;
+  }
+  .ilan-detay-call-btn { background: var(--teal); color: #fff; }
+  .ilan-detay-call-btn:hover { background: var(--teal-bright); }
+  .ilan-detay-whatsapp-btn { background: #25D366; color: #fff; }
+  .ilan-detay-whatsapp-btn:hover { background: #21bd5c; }
+
+  .ilan-detay-date { font-size: 12px; color: var(--ink-faint); margin-top: 4px; text-align: center; }
+
+  @media (max-width: 480px) { .ilan-detay-main-photo-wrap { height: 280px; } }
 
   .autocomplete-wrap { position: relative; }
   .autocomplete-list {
@@ -349,21 +381,33 @@
 
     <div id="panel-ilan-detay" style="display:none;">
       <div class="nav-row"><span class="nav-back" id="back-to-list">← İlanlara dön</span></div>
-      <div class="ilan-detay-card">
-        <div class="ilan-detay-main-photo-wrap" id="ilan-detay-main-photo-wrap">
-          <img id="ilan-detay-main-photo" src="" alt="">
-          <button type="button" class="ilan-detay-nav-btn prev" id="ilan-detay-prev">‹</button>
-          <button type="button" class="ilan-detay-nav-btn next" id="ilan-detay-next">›</button>
-          <span class="ilan-detay-counter" id="ilan-detay-counter"></span>
-          <button type="button" class="ilan-detay-zoom-btn" id="ilan-detay-zoom-btn">🔍 Büyüt</button>
+      <div class="ilan-detay-layout">
+        <div class="ilan-detay-gallery-col">
+          <div class="ilan-detay-main-photo-wrap" id="ilan-detay-main-photo-wrap">
+            <img id="ilan-detay-main-photo" src="" alt="" loading="eager">
+            <button type="button" class="ilan-detay-nav-btn prev" id="ilan-detay-prev">‹</button>
+            <button type="button" class="ilan-detay-nav-btn next" id="ilan-detay-next">›</button>
+            <span class="ilan-detay-counter" id="ilan-detay-counter"></span>
+          </div>
+          <div class="ilan-detay-thumbs-row">
+            <button type="button" class="thumbs-scroll-btn left" id="thumbs-scroll-left">‹</button>
+            <div class="ilan-detay-thumbs" id="ilan-detay-thumbs"></div>
+            <button type="button" class="thumbs-scroll-btn right" id="thumbs-scroll-right">›</button>
+            <button type="button" class="ilan-detay-zoom-btn" id="ilan-detay-zoom-btn">🔍<span id="ilan-detay-zoom-count"></span></button>
+          </div>
+          <div class="ilan-detay-desc-card">
+            <h3>Açıklama</h3>
+            <div class="ilan-detay-desc" id="ilan-detay-desc"></div>
+          </div>
         </div>
-        <div class="ilan-detay-thumbs" id="ilan-detay-thumbs"></div>
-        <div class="ilan-detay-info">
-          <span class="listing-type-badge" id="ilan-detay-badge"></span>
+        <div class="ilan-detay-sidebar">
+          <div class="ilan-detay-badges" id="ilan-detay-badges"></div>
           <h2 class="ilan-detay-name" id="ilan-detay-name"></h2>
-          <div class="ilan-detay-meta" id="ilan-detay-meta"></div>
-          <div class="ilan-detay-desc" id="ilan-detay-desc"></div>
-          <div class="ilan-detay-contact" id="ilan-detay-contact"></div>
+          <div class="ilan-detay-location" id="ilan-detay-location"></div>
+          <div class="ilan-detay-specs" id="ilan-detay-specs"></div>
+          <a class="ilan-detay-call-btn" id="ilan-detay-call-btn">📞 Hemen Ara</a>
+          <a class="ilan-detay-whatsapp-btn" id="ilan-detay-whatsapp-btn" target="_blank" rel="noopener">💬 WhatsApp'tan Yaz</a>
+          <div class="ilan-detay-date" id="ilan-detay-date"></div>
         </div>
       </div>
     </div>
@@ -846,7 +890,7 @@ function renderFilteredListings() {
     const kapakFoto = fotograflar[0];
     const countBadgeHtml = fotograflar.length > 1 ? `<span class="listing-photo-count-badge">📷 ${fotograflar.length}</span>` : "";
     const photoHtml = kapakFoto
-      ? `<div class="listing-photo-wrap"><img class="listing-photo" src="${kapakFoto}" alt="${ilan.hayvan_adi}">${countBadgeHtml}</div>`
+      ? `<div class="listing-photo-wrap"><img class="listing-photo" src="${kapakFoto}" alt="${ilan.hayvan_adi}" loading="lazy" decoding="async">${countBadgeHtml}</div>`
       : `<div class="listing-photo"></div>`;
     const tur = ilan.ilan_turu || "sahiplendirme";
     const badgeClass = tur === "çiftleştirme" ? "ciftlestirme" : "sahiplendirme";
@@ -870,6 +914,15 @@ function renderFilteredListings() {
 let ilanDetayFotograflari = [];
 let ilanDetayIndex = 0;
 
+function buildWhatsAppLink(iletisim) {
+  const digits = (iletisim || "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  let intl = digits;
+  if (intl.startsWith("0")) intl = "90" + intl.slice(1);
+  else if (!intl.startsWith("90")) intl = "90" + intl;
+  return `https://wa.me/${intl}`;
+}
+
 function openIlanDetay(ilan, fotograflar) {
   ilanDetayFotograflari = fotograflar;
   ilanDetayIndex = 0;
@@ -878,22 +931,58 @@ function openIlanDetay(ilan, fotograflar) {
   const badgeClass = tur === "çiftleştirme" ? "ciftlestirme" : "sahiplendirme";
   const badgeLabel = tur === "çiftleştirme" ? "💞 Çiftleştirme" : "🏠 Sahiplendirme";
 
-  document.getElementById("ilan-detay-badge").className = `listing-type-badge ${badgeClass}`;
-  document.getElementById("ilan-detay-badge").textContent = badgeLabel;
-  document.getElementById("ilan-detay-name").textContent = `${ilan.hayvan_adi} · ${ilan.tur}`;
-  document.getElementById("ilan-detay-meta").textContent = [ilan.yas, ilan.cinsiyet, ilan.konum].filter(Boolean).join(" · ");
+  document.getElementById("ilan-detay-badges").innerHTML = `
+    <span class="listing-type-badge ${badgeClass}">${badgeLabel}</span>
+    ${ilan.tur ? `<span class="listing-type-badge sahiplendirme">${ilan.tur}</span>` : ""}
+  `;
+  document.getElementById("ilan-detay-name").textContent = ilan.hayvan_adi;
+  document.getElementById("ilan-detay-location").innerHTML = ilan.konum ? `📍 ${ilan.konum}` : "";
   document.getElementById("ilan-detay-desc").textContent = ilan.aciklama;
-  document.getElementById("ilan-detay-contact").textContent = `📞 ${ilan.iletisim}`;
+
+  const specs = [
+    ["Tür", ilan.tur],
+    ["Yaş", ilan.yas],
+    ["Cinsiyet", ilan.cinsiyet],
+  ].filter(([, v]) => !!v);
+  document.getElementById("ilan-detay-specs").innerHTML = specs.map(([label, value]) => `
+    <div class="ilan-detay-spec-row"><span class="spec-label">${label}</span><span class="spec-value">${value}</span></div>
+  `).join("");
+
+  const callBtn = document.getElementById("ilan-detay-call-btn");
+  callBtn.href = `tel:${(ilan.iletisim || "").replace(/\s+/g, "")}`;
+  callBtn.textContent = `📞 Hemen Ara`;
+
+  const waLink = buildWhatsAppLink(ilan.iletisim);
+  const waBtn = document.getElementById("ilan-detay-whatsapp-btn");
+  if (waLink) {
+    waBtn.href = waLink;
+    waBtn.style.display = "flex";
+  } else {
+    waBtn.style.display = "none";
+  }
+
+  document.getElementById("ilan-detay-date").textContent = ilan.created_at
+    ? `İlan tarihi: ${new Date(ilan.created_at).toLocaleDateString("tr-TR")}`
+    : "";
 
   const thumbsWrap = document.getElementById("ilan-detay-thumbs");
+  const thumbsRow = document.querySelector(".ilan-detay-thumbs-row");
+  const zoomBtn = document.getElementById("ilan-detay-zoom-btn");
   if (fotograflar.length > 1) {
-    thumbsWrap.innerHTML = fotograflar.map((url, i) => `<img src="${url}" data-idx="${i}" alt="">`).join("");
+    thumbsWrap.innerHTML = fotograflar.map((url, i) => `<img src="${url}" data-idx="${i}" alt="" loading="lazy" decoding="async">`).join("");
     thumbsWrap.querySelectorAll("img").forEach(img => {
       img.addEventListener("click", () => { ilanDetayIndex = parseInt(img.dataset.idx); renderIlanDetayPhoto(); });
     });
-  } else {
+    thumbsRow.style.display = "flex";
+    document.getElementById("ilan-detay-zoom-count").textContent = ` ${fotograflar.length} Fotoğraf`;
+  } else if (fotograflar.length === 1) {
     thumbsWrap.innerHTML = "";
+    thumbsRow.style.display = "flex";
+    document.getElementById("ilan-detay-zoom-count").textContent = "";
+  } else {
+    thumbsRow.style.display = "none";
   }
+  updateThumbScrollButtons();
 
   renderIlanDetayPhoto();
 
@@ -924,7 +1013,15 @@ function renderIlanDetayPhoto() {
 
   document.querySelectorAll("#ilan-detay-thumbs img").forEach((img, i) => {
     img.classList.toggle("active", i === ilanDetayIndex);
+    if (i === ilanDetayIndex) img.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   });
+}
+
+function updateThumbScrollButtons() {
+  const thumbsWrap = document.getElementById("ilan-detay-thumbs");
+  const needsScroll = thumbsWrap.scrollWidth > thumbsWrap.clientWidth + 4;
+  document.getElementById("thumbs-scroll-left").classList.toggle("visible", needsScroll);
+  document.getElementById("thumbs-scroll-right").classList.toggle("visible", needsScroll);
 }
 
 document.getElementById("back-to-list").addEventListener("click", closeIlanDetay);
@@ -939,6 +1036,12 @@ document.getElementById("ilan-detay-next").addEventListener("click", (e) => {
 document.getElementById("ilan-detay-zoom-btn").addEventListener("click", (e) => {
   e.stopPropagation();
   if (ilanDetayFotograflari.length > 0) openLightbox(ilanDetayFotograflari, ilanDetayIndex);
+});
+document.getElementById("thumbs-scroll-left").addEventListener("click", () => {
+  document.getElementById("ilan-detay-thumbs").scrollBy({ left: -160, behavior: "smooth" });
+});
+document.getElementById("thumbs-scroll-right").addEventListener("click", () => {
+  document.getElementById("ilan-detay-thumbs").scrollBy({ left: 160, behavior: "smooth" });
 });
 
 // Mobil: detay görünümünde de kaydırarak fotoğraflar arası geçiş

@@ -508,7 +508,7 @@ function renderQuestions() {
           ${(soru.soru_sahibi_id === currentUserId || currentUserIsVet) ? paylasimRozeti : ""}
         </div>
       </div>
-      <div class="question-meta">${soru.soru_sahibi_adi} · ${new Date(soru.created_at).toLocaleDateString("tr-TR")}</div>
+      <div class="question-meta">${soru.adi_gizli ? soru.soru_sahibi_adi : `<a href="/profil/${soru.soru_sahibi_id}" style="color:inherit;text-decoration:none;">${soru.soru_sahibi_adi}</a>`} · ${new Date(soru.created_at).toLocaleDateString("tr-TR")}</div>
       <div class="question-content">${soru.icerik}</div>
       ${answersHtml}
       ${replyBoxHtml}

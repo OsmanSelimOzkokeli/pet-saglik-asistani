@@ -115,6 +115,31 @@
 
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  textarea { width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); min-height: 80px; resize: vertical; }
+  textarea:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    max-height: 220px; overflow-y: auto; display: none;
+    box-shadow: 0 8px 20px rgba(20, 35, 31, 0.12);
+  }
+  .autocomplete-list.visible { display: block; }
+  .autocomplete-item { padding: 9px 13px; font-size: 14px; cursor: pointer; color: var(--ink); }
+  .autocomplete-item:hover { background: var(--teal-soft); }
+
+  .pet-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .pet-item { display: flex; align-items: center; gap: 10px; background: var(--paper); border-radius: 10px; padding: 10px 12px; }
+  .pet-item-info { flex: 1; font-size: 13.5px; }
+  .pet-item-info strong { color: var(--ink); }
+  .pet-item-info span { color: var(--ink-soft); }
+  .pet-remove-btn { background: none; border: none; color: var(--acil); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 6px 8px; }
+  .pet-add-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 8px; }
+  @media (max-width: 560px) { .pet-add-row { grid-template-columns: 1fr 1fr; } }
+  .pet-add-row input { font-size: 13.5px; padding: 9px 10px; }
+  .pet-add-btn { background: var(--teal-soft); color: var(--teal); border: none; border-radius: 9px; padding: 9px 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .pet-add-btn:hover { background: #D3E9E6; }
   input { width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
   input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
   input:disabled { color: var(--ink-faint); cursor: not-allowed; }
@@ -194,7 +219,7 @@ async function initSession() {
   currentUserId = session.user.id;
   currentUserEmail = session.user.email;
 
-  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner, profil_foto_url, kullanici_adi_degisim_tarihi").eq("id", session.user.id).single();
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner, profil_foto_url, kullanici_adi_degisim_tarihi, sehir, bio, hayvanlarim").eq("id", session.user.id).single();
   const username = profile ? profile.kullanici_adi : session.user.email;
     const avatarHtml = profile && profile.profil_foto_url
       ? `<img src="${profile.profil_foto_url}" alt="">`
@@ -334,6 +359,37 @@ async function renderContent(profile, session) {
     </div>
 
     <div class="section-card">
+      <div class="section-title">Profil bilgileri</div>
+      <div class="section-desc">Bu bilgiler, profilini görüntüleyen diğer kullanıcılara gösterilir.</div>
+      <div class="field">
+        <label for="profil-sehir">Şehir</label>
+        <div class="autocomplete-wrap">
+          <input type="text" id="profil-sehir" placeholder="Şehir yaz veya seç" autocomplete="off" value="${profile && profile.sehir ? profile.sehir : ""}">
+          <div class="autocomplete-list" id="profil-sehir-list"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="profil-bio">Hakkımda</label>
+        <textarea id="profil-bio" placeholder="Kendinden kısaca bahset...">${profile && profile.bio ? profile.bio : ""}</textarea>
+      </div>
+      <button class="save-btn" id="profil-bilgi-save-btn">Kaydet</button>
+      <div class="msg-box" id="profil-bilgi-msg-box"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">Hayvanlarım</div>
+      <div class="section-desc">Profilinde görünecek evcil hayvanlarını ekle.</div>
+      <div class="pet-list" id="pet-list"></div>
+      <div class="pet-add-row">
+        <input type="text" id="pet-ad-input" placeholder="Adı">
+        <input type="text" id="pet-tur-input" placeholder="Türü">
+        <input type="text" id="pet-yas-input" placeholder="Yaşı">
+        <button class="pet-add-btn" id="pet-add-btn">+ Ekle</button>
+      </div>
+      <div class="msg-box" id="pet-msg-box"></div>
+    </div>
+
+    <div class="section-card">
       <div class="section-title">E-posta</div>
       <div class="section-desc">E-postanı değiştirmek istersen yeni adresine bir onay maili göndeririz.</div>
       <div class="field">
@@ -341,6 +397,12 @@ async function renderContent(profile, session) {
       </div>
       <button class="save-btn" id="email-save-btn">E-postayı Güncelle</button>
       <div class="msg-box" id="email-msg-box"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">Profilini gör</div>
+      <div class="section-desc">Diğer kullanıcıların gördüğü herkese açık profilin.</div>
+      <a href="/profil/${currentUserId}" class="save-btn" style="display:inline-block; text-decoration:none;">Profilimi Görüntüle →</a>
     </div>
 
     <div class="section-card">
@@ -387,6 +449,126 @@ async function renderContent(profile, session) {
   document.getElementById("avatar-file-input").addEventListener("change", uploadAvatar);
   const removeBtn = document.getElementById("avatar-remove-btn");
   if (removeBtn) removeBtn.addEventListener("click", removeAvatar);
+
+  document.getElementById("profil-bilgi-save-btn").addEventListener("click", saveProfilBilgileri);
+  setupCityAutocomplete(document.getElementById("profil-sehir"), document.getElementById("profil-sehir-list"));
+
+  currentHayvanlarim = (profile && profile.hayvanlarim) ? profile.hayvanlarim : [];
+  renderPetList();
+  document.getElementById("pet-add-btn").addEventListener("click", addPet);
+}
+
+let currentHayvanlarim = [];
+
+function renderPetList() {
+  const list = document.getElementById("pet-list");
+  if (currentHayvanlarim.length === 0) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--ink-faint);">Henüz hayvan eklemedin.</div>';
+    return;
+  }
+  list.innerHTML = currentHayvanlarim.map((pet, i) => `
+    <div class="pet-item">
+      <div class="pet-item-info"><strong>${pet.ad}</strong> <span>· ${[pet.tur, pet.yas].filter(Boolean).join(" · ")}</span></div>
+      <button class="pet-remove-btn" data-idx="${i}">Kaldır</button>
+    </div>
+  `).join("");
+  list.querySelectorAll(".pet-remove-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      currentHayvanlarim.splice(parseInt(btn.dataset.idx), 1);
+      await savePetList();
+      renderPetList();
+    });
+  });
+}
+
+async function addPet() {
+  const ad = document.getElementById("pet-ad-input").value.trim();
+  const tur = document.getElementById("pet-tur-input").value.trim();
+  const yas = document.getElementById("pet-yas-input").value.trim();
+  const msgBox = document.getElementById("pet-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  if (!ad) {
+    msgBox.textContent = "Lütfen en azından hayvanın adını yaz.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  currentHayvanlarim.push({ ad, tur: tur || null, yas: yas || null });
+  const { error } = await supabaseClient.from("kullanici_profilleri").update({ hayvanlarim: currentHayvanlarim }).eq("id", currentUserId);
+
+  if (error) {
+    currentHayvanlarim.pop();
+    msgBox.textContent = "Eklenemedi: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  document.getElementById("pet-ad-input").value = "";
+  document.getElementById("pet-tur-input").value = "";
+  document.getElementById("pet-yas-input").value = "";
+  renderPetList();
+}
+
+async function savePetList() {
+  await supabaseClient.from("kullanici_profilleri").update({ hayvanlarim: currentHayvanlarim }).eq("id", currentUserId);
+}
+
+async function saveProfilBilgileri() {
+  const sehir = document.getElementById("profil-sehir").value.trim() || null;
+  const bio = document.getElementById("profil-bio").value.trim() || null;
+  const msgBox = document.getElementById("profil-bilgi-msg-box");
+  msgBox.classList.remove("visible", "success", "error");
+
+  const btn = document.getElementById("profil-bilgi-save-btn");
+  btn.disabled = true; btn.textContent = "Kaydediliyor...";
+
+  const { error } = await supabaseClient.from("kullanici_profilleri").update({ sehir, bio }).eq("id", currentUserId);
+
+  btn.disabled = false; btn.textContent = "Kaydet";
+
+  if (error) {
+    msgBox.textContent = "Kaydedilemedi: " + error.message;
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  msgBox.textContent = "Profil bilgilerin güncellendi.";
+  msgBox.classList.add("visible", "success");
+}
+
+const TURKISH_CITIES = [
+  "Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın",
+  "Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa",
+  "Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum",
+  "Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir",
+  "Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kırıkkale","Kırklareli","Kırşehir","Kilis",
+  "Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir",
+  "Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Şanlıurfa",
+  "Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak",
+].sort((a, b) => a.localeCompare(b, "tr"));
+
+function setupCityAutocomplete(inputEl, listEl) {
+  function render() {
+    const q = inputEl.value.trim();
+    if (!q) { listEl.classList.remove("visible"); listEl.innerHTML = ""; return; }
+    const qLower = q.toLocaleLowerCase("tr-TR");
+    const matches = TURKISH_CITIES.filter(c => c.toLocaleLowerCase("tr-TR").startsWith(qLower)).slice(0, 8);
+    if (matches.length === 0) { listEl.classList.remove("visible"); listEl.innerHTML = ""; return; }
+    listEl.innerHTML = matches.map(c => `<div class="autocomplete-item" data-val="${c}">${c}</div>`).join("");
+    listEl.classList.add("visible");
+    listEl.querySelectorAll(".autocomplete-item").forEach(item => {
+      item.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        inputEl.value = item.dataset.val;
+        listEl.classList.remove("visible");
+        listEl.innerHTML = "";
+      });
+    });
+  }
+  inputEl.addEventListener("input", render);
+  inputEl.addEventListener("focus", render);
+  inputEl.addEventListener("blur", () => setTimeout(() => listEl.classList.remove("visible"), 120));
 }
 
 function compressImage(file, maxDimension, quality) {

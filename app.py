@@ -674,7 +674,15 @@ def veteriner_sor_sayfa():
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "veteriner-sor.html bulunamadı"}
 
+
+@app.get("/profil/{kullanici_id}")
+def profil_sayfa(kullanici_id: str):
+    html_path = os.path.join(os.path.dirname(__file__), "profil.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"status": "hata", "mesaj": "profil.html bulunamadı"}
     
+        
 @app.get("/forum")
 def forum_sayfa():
     html_path = os.path.join(os.path.dirname(__file__), "forum.html")
