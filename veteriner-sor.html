@@ -90,6 +90,23 @@
 
   .ask-form-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 22px; display: none; }
   .ask-form-card.visible { display: block; }
+  .checkbox-field { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
+  .checkbox-field input[type="checkbox"] { width: auto; margin-top: 3px; flex-shrink: 0; cursor: pointer; }
+  .checkbox-field label { font-size: 13.5px; color: var(--ink); font-weight: 500; cursor: pointer; }
+
+  .share-badge { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 100px; white-space: nowrap; }
+  .share-badge.public { background: var(--green-soft); color: #3F5A22; }
+  .share-badge.private { background: var(--paper); color: var(--ink-faint); border: 1px solid var(--line); }
+
+  .comment-section { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .comment-toggle { font-size: 12px; font-weight: 600; color: var(--teal-bright); cursor: pointer; }
+  .comment-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .comment-item { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; }
+  .comment-author { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); margin-bottom: 2px; }
+  .comment-text { font-size: 12.5px; color: var(--ink); line-height: 1.45; }
+  .comment-form { display: flex; gap: 8px; margin-top: 10px; }
+  .comment-form input { flex: 1; font-size: 13px; padding: 8px 10px; }
+  .comment-form button { font-size: 12.5px; padding: 8px 14px; white-space: nowrap; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
   input, select, textarea { width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
@@ -304,6 +321,14 @@ function renderAskArea() {
         </select>
       </div>
       <div class="field"><label for="soru-icerik">Sorunun detayı</label><textarea id="soru-icerik" placeholder="Durumu olabildiğince detaylı anlat..."></textarea></div>
+      <div class="checkbox-field">
+        <input type="checkbox" id="soru-paylas">
+        <label for="soru-paylas">Bu soruyu ve aldığım cevapları herkese açık paylaşmak istiyorum (başkalarına faydalı olabilir)</label>
+      </div>
+      <div class="checkbox-field" id="soru-gizle-wrap" style="display:none;">
+        <input type="checkbox" id="soru-adi-gizle">
+        <label for="soru-adi-gizle">Kullanıcı adımı gizle (sadece baş harfim görünsün)</label>
+      </div>
       <button class="submit-btn" id="soru-submit-btn">Soruyu Gönder</button>
       <div class="msg-box" id="soru-msg-box"></div>
     </div>
@@ -311,6 +336,10 @@ function renderAskArea() {
 
   document.getElementById("ask-toggle-btn").addEventListener("click", () => {
     document.getElementById("ask-form-card").classList.toggle("visible");
+  });
+  document.getElementById("soru-paylas").addEventListener("change", (e) => {
+    document.getElementById("soru-gizle-wrap").style.display = e.target.checked ? "flex" : "none";
+    if (!e.target.checked) document.getElementById("soru-adi-gizle").checked = false;
   });
   document.getElementById("soru-submit-btn").addEventListener("click", submitSoru);
 }
@@ -333,6 +362,8 @@ async function submitSoru() {
 
   const { error } = await supabaseClient.from("veteriner_sorulari").insert({
     soru_sahibi_id: currentUserId, baslik, icerik, hayvan_turu,
+    paylas_izni: document.getElementById("soru-paylas").checked,
+    adi_gizli: document.getElementById("soru-adi-gizle").checked,
   });
 
   btn.disabled = false; btn.textContent = "Soruyu Gönder";
@@ -348,6 +379,9 @@ async function submitSoru() {
   document.getElementById("soru-baslik").value = "";
   document.getElementById("soru-hayvan-turu").value = "";
   document.getElementById("soru-icerik").value = "";
+  document.getElementById("soru-paylas").checked = false;
+  document.getElementById("soru-adi-gizle").checked = false;
+  document.getElementById("soru-gizle-wrap").style.display = "none";
   await loadQuestions();
 }
 
@@ -371,30 +405,38 @@ async function loadQuestions() {
   (soruSahipleriRes.data || []).forEach(p => { soruSahipleri[p.id] = p.kullanici_adi; });
 
   const tumCevaplar = tumCevaplarRes.data || [];
-  const vetIds = [...new Set(tumCevaplar.map(c => c.veteriner_id))];
+  const cevapIds = tumCevaplar.map(c => c.id);
 
-  // Cevaplayan veterinerlerin profilleri + klinik bilgileri de toplu çekiliyor
-  const [vetProfilleriRes, vetBasvurulariRes] = await Promise.all([
-    vetIds.length ? supabaseClient.from("kullanici_profilleri").select("id, kullanici_adi").in("id", vetIds) : Promise.resolve({ data: [] }),
-    vetIds.length ? supabaseClient.from("veteriner_basvurulari").select("kullanici_id, klinik_adi").in("kullanici_id", vetIds).eq("durum", "onaylı") : Promise.resolve({ data: [] }),
-  ]);
+  // Cevap altındaki yorumlar + yorumcu profilleri toplu çekiliyor
+  const { data: tumYorumlar } = cevapIds.length
+    ? await supabaseClient.from("veteriner_cevap_yorumlari").select("*").in("cevap_id", cevapIds).order("created_at", { ascending: true })
+    : { data: [] };
 
-  const vetAdlari = {};
-  (vetProfilleriRes.data || []).forEach(p => { vetAdlari[p.id] = p.kullanici_adi; });
-  const vetKlinikleri = {};
-  (vetBasvurulariRes.data || []).forEach(b => { vetKlinikleri[b.kullanici_id] = b.klinik_adi; });
+  const yorumcuIds = [...new Set((tumYorumlar || []).map(y => y.yorumcu_id))];
+  const { data: yorumcuProfilleri } = yorumcuIds.length
+    ? await supabaseClient.from("kullanici_profilleri").select("id, kullanici_adi").in("id", yorumcuIds)
+    : { data: [] };
+  const yorumcuAdlari = {};
+  (yorumcuProfilleri || []).forEach(p => { yorumcuAdlari[p.id] = p.kullanici_adi; });
+
+  const yorumlarByCevapId = {};
+  (tumYorumlar || []).forEach(y => {
+    y.yorumcu_adi = yorumcuAdlari[y.yorumcu_id] || "Kullanıcı";
+    if (!yorumlarByCevapId[y.cevap_id]) yorumlarByCevapId[y.cevap_id] = [];
+    yorumlarByCevapId[y.cevap_id].push(y);
+  });
 
   const cevaplarBySoruId = {};
   tumCevaplar.forEach(c => {
-    c.vet_adi = vetAdlari[c.veteriner_id] || "Veteriner";
-    c.klinik_adi = vetKlinikleri[c.veteriner_id] || null;
+    c.yorumlar = yorumlarByCevapId[c.id] || [];
     if (!cevaplarBySoruId[c.soru_id]) cevaplarBySoruId[c.soru_id] = [];
     cevaplarBySoruId[c.soru_id].push(c);
   });
 
   sorular.forEach(soru => {
     soru.cevaplar = cevaplarBySoruId[soru.id] || [];
-    soru.soru_sahibi_adi = soruSahipleri[soru.soru_sahibi_id] || "Kullanıcı";
+    const tamAd = soruSahipleri[soru.soru_sahibi_id] || "Kullanıcı";
+    soru.soru_sahibi_adi = soru.adi_gizli ? (tamAd.charAt(0).toUpperCase() + "***") : tamAd;
   });
 
   allQuestions = sorular;
@@ -418,19 +460,41 @@ function renderQuestions() {
     const card = document.createElement("div");
     card.className = "question-card";
 
+    const paylasimRozeti = soru.paylas_izni
+      ? `<span class="share-badge public">🌍 Paylaşıldı</span>`
+      : `<span class="share-badge private">🔒 Özel</span>`;
+
     const answersHtml = soru.cevaplar.length > 0
-      ? `<div class="answer-list">${soru.cevaplar.map(c => `
-          <div class="answer-card">
-            <div class="answer-vet">🩺 ${c.klinik_adi || c.vet_adi}</div>
-            <div class="answer-content">${c.cevap}</div>
-            <div class="answer-time">${new Date(c.created_at).toLocaleDateString("tr-TR")}</div>
-          </div>
-        `).join("")}</div>`
+      ? `<div class="answer-list">${soru.cevaplar.map(c => {
+          const yorumlarHtml = (c.yorumlar || []).map(y => `
+            <div class="comment-item">
+              <div class="comment-author">${y.yorumcu_adi}</div>
+              <div class="comment-text">${y.yorum}</div>
+            </div>
+          `).join("");
+          const yorumFormHtml = currentUserId ? `
+            <div class="comment-form">
+              <input type="text" placeholder="Tecrübeni paylaş..." id="comment-input-${c.id}">
+              <button class="submit-btn comment-submit-btn" data-cevap-id="${c.id}">Yorum Yap</button>
+            </div>
+          ` : "";
+          return `
+            <div class="answer-card">
+              <div class="answer-vet">🩺 Bir veteriner</div>
+              <div class="answer-content">${c.cevap}</div>
+              <div class="answer-time">${new Date(c.created_at).toLocaleDateString("tr-TR")}</div>
+              <div class="comment-section">
+                ${c.yorumlar && c.yorumlar.length > 0 ? `<div class="comment-list">${yorumlarHtml}</div>` : ""}
+                ${yorumFormHtml}
+              </div>
+            </div>
+          `;
+        }).join("")}</div>`
       : `<div class="no-answer-note">Henüz cevaplanmadı.</div>`;
 
     const replyBoxHtml = currentUserIsVet ? `
       <div class="reply-box">
-        <textarea placeholder="Bir veteriner olarak cevabını yaz..." id="reply-input-${soru.id}"></textarea>
+        <textarea placeholder="Bir veteriner olarak cevabını yaz... (kimliğin karşı tarafa gösterilmez)" id="reply-input-${soru.id}"></textarea>
         <button class="submit-btn reply-submit-btn" data-soru-id="${soru.id}">Cevabı Gönder</button>
         <div class="msg-box" id="reply-msg-${soru.id}"></div>
       </div>
@@ -439,7 +503,10 @@ function renderQuestions() {
     card.innerHTML = `
       <div class="question-top">
         <div class="question-title">${soru.baslik}</div>
-        ${soru.hayvan_turu ? `<span class="species-badge">${soru.hayvan_turu}</span>` : ""}
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          ${soru.hayvan_turu ? `<span class="species-badge">${soru.hayvan_turu}</span>` : ""}
+          ${(soru.soru_sahibi_id === currentUserId || currentUserIsVet) ? paylasimRozeti : ""}
+        </div>
       </div>
       <div class="question-meta">${soru.soru_sahibi_adi} · ${new Date(soru.created_at).toLocaleDateString("tr-TR")}</div>
       <div class="question-content">${soru.icerik}</div>
@@ -454,6 +521,33 @@ function renderQuestions() {
       btn.addEventListener("click", () => submitCevap(btn.dataset.soruId, btn));
     });
   }
+  if (currentUserId) {
+    list.querySelectorAll(".comment-submit-btn").forEach(btn => {
+      btn.addEventListener("click", () => submitYorum(btn.dataset.cevapId, btn));
+    });
+  }
+}
+
+async function submitYorum(cevapId, btnEl) {
+  const input = document.getElementById(`comment-input-${cevapId}`);
+  const yorum = input.value.trim();
+  if (!yorum) return;
+
+  btnEl.disabled = true; btnEl.textContent = "Gönderiliyor...";
+
+  const { error } = await supabaseClient.from("veteriner_cevap_yorumlari").insert({
+    cevap_id: cevapId, yorumcu_id: currentUserId, yorum,
+  });
+
+  btnEl.disabled = false; btnEl.textContent = "Yorum Yap";
+
+  if (error) {
+    alert("Yorum gönderilemedi: " + error.message);
+    return;
+  }
+
+  input.value = "";
+  await loadQuestions();
 }
 
 async function submitCevap(soruId, btnEl) {
