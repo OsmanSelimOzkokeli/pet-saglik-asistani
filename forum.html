@@ -97,6 +97,36 @@
   @media (max-width: 620px) { .header-wrap { flex-direction: column; align-items: flex-start; } .header-collage { align-self: center; margin-top: 8px; } }
 
   .category-grid { display: flex; flex-direction: column; gap: 10px; }
+
+  .forum-section-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .forum-section-tab-btn { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink-soft); }
+  .forum-section-tab-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .vet-answers-intro { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 18px; }
+  .vet-answers-intro a { color: var(--teal-bright); font-weight: 600; }
+
+  .question-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; }
+  .question-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .question-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 17px; color: var(--ink); }
+  .species-badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; background: var(--teal-soft); color: var(--teal); white-space: nowrap; flex-shrink: 0; }
+  .question-meta { font-size: 12px; color: var(--ink-faint); margin-bottom: 10px; }
+  .question-content { font-size: 14px; color: var(--ink); line-height: 1.55; margin-bottom: 14px; }
+
+  .answer-list { display: flex; flex-direction: column; gap: 10px; }
+  .answer-card { background: var(--paper); border-radius: 12px; padding: 13px 16px; border-left: 3px solid var(--teal); }
+  .answer-vet { font-size: 12.5px; font-weight: 700; color: var(--teal); margin-bottom: 4px; }
+  .answer-content { font-size: 13.5px; color: var(--ink); line-height: 1.5; }
+  .answer-time { font-size: 11px; color: var(--ink-faint); margin-top: 6px; }
+  .no-answer-note { font-size: 13px; color: var(--ink-faint); font-style: italic; }
+
+  .va-comment-section { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .va-comment-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .va-comment-item { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; }
+  .va-comment-author { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); margin-bottom: 2px; }
+  .va-comment-text { font-size: 12.5px; color: var(--ink); line-height: 1.45; }
+  .va-comment-form { display: flex; gap: 8px; margin-top: 10px; }
+  .va-comment-form input { flex: 1; font-size: 13px; padding: 8px 10px; }
+  .va-comment-form button { font-size: 12.5px; padding: 8px 14px; white-space: nowrap; }
   .category-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; cursor: pointer; transition: border-color 0.15s; display: flex; align-items: center; gap: 16px; }
   .category-card:hover { border-color: var(--teal-bright); }
   .category-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--teal-soft); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
@@ -184,25 +214,37 @@
     </div>
   </div>
 
-  <div id="view-categories">
-    <div class="category-grid" id="category-grid">
-      <div class="empty-state"><div class="spinner"></div></div>
+  <div class="forum-section-tabs" id="forum-section-tabs">
+    <button class="forum-section-tab-btn active" data-section="forum">💬 Forum</button>
+    <button class="forum-section-tab-btn" data-section="vet-answers">🩺 Veteriner Cevapları</button>
+  </div>
+
+  <div id="forum-views">
+    <div id="view-categories">
+      <div class="category-grid" id="category-grid">
+        <div class="empty-state"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div id="view-topics" style="display:none;">
+      <div class="nav-row"><span class="nav-back" id="back-to-categories">← Kategoriler</span></div>
+      <h2 id="topic-list-category-name" style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 14px; color:var(--ink);"></h2>
+      <div id="new-topic-area"></div>
+      <div class="topic-list" id="topic-list"><div class="empty-state"><div class="spinner"></div></div></div>
+    </div>
+
+    <div id="view-topic-detail" style="display:none;">
+      <div class="nav-row"><span class="nav-back" id="back-to-topics">← Konu listesi</span></div>
+      <div class="topic-detail-card" id="topic-detail-card"></div>
+      <h3 style="font-size:15px; margin-bottom:10px;">Yorumlar</h3>
+      <div class="comment-list" id="comment-list"></div>
+      <div id="comment-form-area"></div>
     </div>
   </div>
 
-  <div id="view-topics" style="display:none;">
-    <div class="nav-row"><span class="nav-back" id="back-to-categories">← Kategoriler</span></div>
-    <h2 id="topic-list-category-name" style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 14px; color:var(--ink);"></h2>
-    <div id="new-topic-area"></div>
-    <div class="topic-list" id="topic-list"><div class="empty-state"><div class="spinner"></div></div></div>
-  </div>
-
-  <div id="view-topic-detail" style="display:none;">
-    <div class="nav-row"><span class="nav-back" id="back-to-topics">← Konu listesi</span></div>
-    <div class="topic-detail-card" id="topic-detail-card"></div>
-    <h3 style="font-size:15px; margin-bottom:10px;">Yorumlar</h3>
-    <div class="comment-list" id="comment-list"></div>
-    <div id="comment-form-area"></div>
+  <div id="view-vet-answers" style="display:none;">
+    <div class="vet-answers-intro">Bu bölümde, sahiplerinin herkesle paylaşmayı seçtiği sorular ve veteriner cevapları listelenir. Kendi sorunu sormak ya da (veterinersen) cevap yazmak için <a href="/veteriner-sor">Veterinere Sor</a> sayfasına git.</div>
+    <div id="vet-answers-list"><div class="empty-state"><div class="spinner"></div></div></div>
   </div>
 </div>
 
@@ -233,6 +275,22 @@ loadHeaderPhotos();
 let currentSession = null;
 let currentCategoryId = null;
 let currentTopicId = null;
+let vetAnswersLoaded = false;
+
+document.querySelectorAll("#forum-section-tabs .forum-section-tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#forum-section-tabs .forum-section-tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    if (btn.dataset.section === "forum") {
+      document.getElementById("forum-views").style.display = "block";
+      document.getElementById("view-vet-answers").style.display = "none";
+    } else {
+      document.getElementById("forum-views").style.display = "none";
+      document.getElementById("view-vet-answers").style.display = "block";
+      if (!vetAnswersLoaded) { vetAnswersLoaded = true; loadVetAnswers(); }
+    }
+  });
+});
 
 function showView(id) {
   ["view-categories", "view-topics", "view-topic-detail"].forEach(v => {
@@ -472,6 +530,144 @@ async function submitComment() {
 
 document.getElementById("back-to-categories").addEventListener("click", () => showView("view-categories"));
 document.getElementById("back-to-topics").addEventListener("click", () => showView("view-topics"));
+
+async function loadVetAnswers() {
+  const list = document.getElementById("vet-answers-list");
+  const { data: sorular, error } = await supabaseClient
+    .from("veteriner_sorulari")
+    .select("*")
+    .eq("paylas_izni", true)
+    .order("created_at", { ascending: false });
+
+  if (error) { list.innerHTML = `<div class="empty-state">Yüklenemedi: ${error.message}</div>`; return; }
+  if (!sorular || sorular.length === 0) { list.innerHTML = '<div class="empty-state">Henüz paylaşılan bir soru yok.</div>'; return; }
+
+  const soruIds = sorular.map(s => s.id);
+  const soruSahibiIds = [...new Set(sorular.map(s => s.soru_sahibi_id))];
+
+  const [soruSahipleriRes, tumCevaplarRes] = await Promise.all([
+    supabaseClient.from("kullanici_profilleri").select("id, kullanici_adi").in("id", soruSahibiIds),
+    supabaseClient.from("veteriner_cevaplari").select("*").in("soru_id", soruIds).order("created_at", { ascending: true }),
+  ]);
+
+  const soruSahipleri = {};
+  (soruSahipleriRes.data || []).forEach(p => { soruSahipleri[p.id] = p.kullanici_adi; });
+
+  const tumCevaplar = tumCevaplarRes.data || [];
+  const cevapIds = tumCevaplar.map(c => c.id);
+
+  const { data: tumYorumlar } = cevapIds.length
+    ? await supabaseClient.from("veteriner_cevap_yorumlari").select("*").in("cevap_id", cevapIds).order("created_at", { ascending: true })
+    : { data: [] };
+
+  const yorumcuIds = [...new Set((tumYorumlar || []).map(y => y.yorumcu_id))];
+  const { data: yorumcuProfilleri } = yorumcuIds.length
+    ? await supabaseClient.from("kullanici_profilleri").select("id, kullanici_adi").in("id", yorumcuIds)
+    : { data: [] };
+  const yorumcuAdlari = {};
+  (yorumcuProfilleri || []).forEach(p => { yorumcuAdlari[p.id] = p.kullanici_adi; });
+
+  const yorumlarByCevapId = {};
+  (tumYorumlar || []).forEach(y => {
+    y.yorumcu_adi = yorumcuAdlari[y.yorumcu_id] || "Kullanıcı";
+    if (!yorumlarByCevapId[y.cevap_id]) yorumlarByCevapId[y.cevap_id] = [];
+    yorumlarByCevapId[y.cevap_id].push(y);
+  });
+
+  const cevaplarBySoruId = {};
+  tumCevaplar.forEach(c => {
+    c.yorumlar = yorumlarByCevapId[c.id] || [];
+    if (!cevaplarBySoruId[c.soru_id]) cevaplarBySoruId[c.soru_id] = [];
+    cevaplarBySoruId[c.soru_id].push(c);
+  });
+
+  sorular.forEach(soru => {
+    soru.cevaplar = cevaplarBySoruId[soru.id] || [];
+    const tamAd = soruSahipleri[soru.soru_sahibi_id] || "Kullanıcı";
+    soru.soru_sahibi_adi = soru.adi_gizli ? (tamAd.charAt(0).toUpperCase() + "***") : tamAd;
+  });
+
+  renderVetAnswers(sorular);
+}
+
+function renderVetAnswers(sorular) {
+  const list = document.getElementById("vet-answers-list");
+  const currentUserId = currentSession ? currentSession.user.id : null;
+
+  list.innerHTML = "";
+  sorular.forEach(soru => {
+    const card = document.createElement("div");
+    card.className = "question-card";
+
+    const answersHtml = soru.cevaplar.length > 0
+      ? `<div class="answer-list">${soru.cevaplar.map(c => {
+          const yorumlarHtml = (c.yorumlar || []).map(y => `
+            <div class="va-comment-item">
+              <div class="va-comment-author">${y.yorumcu_adi}</div>
+              <div class="va-comment-text">${y.yorum}</div>
+            </div>
+          `).join("");
+          const yorumFormHtml = currentUserId ? `
+            <div class="va-comment-form">
+              <input type="text" placeholder="Tecrübeni paylaş..." id="fva-comment-input-${c.id}">
+              <button class="submit-btn fva-comment-submit-btn" data-cevap-id="${c.id}">Yorum Yap</button>
+            </div>
+          ` : "";
+          return `
+            <div class="answer-card">
+              <div class="answer-vet">🩺 Bir veteriner</div>
+              <div class="answer-content">${c.cevap}</div>
+              <div class="answer-time">${new Date(c.created_at).toLocaleDateString("tr-TR")}</div>
+              <div class="va-comment-section">
+                ${c.yorumlar && c.yorumlar.length > 0 ? `<div class="va-comment-list">${yorumlarHtml}</div>` : ""}
+                ${yorumFormHtml}
+              </div>
+            </div>
+          `;
+        }).join("")}</div>`
+      : `<div class="no-answer-note">Henüz cevaplanmadı.</div>`;
+
+    card.innerHTML = `
+      <div class="question-top">
+        <div class="question-title">${soru.baslik}</div>
+        ${soru.hayvan_turu ? `<span class="species-badge">${soru.hayvan_turu}</span>` : ""}
+      </div>
+      <div class="question-meta">${soru.soru_sahibi_adi} · ${new Date(soru.created_at).toLocaleDateString("tr-TR")}</div>
+      <div class="question-content">${soru.icerik}</div>
+      ${answersHtml}
+    `;
+    list.appendChild(card);
+  });
+
+  if (currentUserId) {
+    list.querySelectorAll(".fva-comment-submit-btn").forEach(btn => {
+      btn.addEventListener("click", () => submitVetAnswerYorum(btn.dataset.cevapId, btn));
+    });
+  }
+}
+
+async function submitVetAnswerYorum(cevapId, btnEl) {
+  const input = document.getElementById(`fva-comment-input-${cevapId}`);
+  const yorum = input.value.trim();
+  if (!yorum) return;
+
+  const currentUserId = currentSession.user.id;
+  btnEl.disabled = true; btnEl.textContent = "Gönderiliyor...";
+
+  const { error } = await supabaseClient.from("veteriner_cevap_yorumlari").insert({
+    cevap_id: cevapId, yorumcu_id: currentUserId, yorum,
+  });
+
+  btnEl.disabled = false; btnEl.textContent = "Yorum Yap";
+
+  if (error) {
+    alert("Yorum gönderilemedi: " + error.message);
+    return;
+  }
+
+  input.value = "";
+  await loadVetAnswers();
+}
 
 (async function init() {
   document.getElementById("mobile-menu-panel").innerHTML = document.querySelector(".nav-links").innerHTML;
