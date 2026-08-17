@@ -44,7 +44,15 @@
   .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
   .nav-links a:hover { color: var(--teal); }
   .nav-auth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-  .nav-avatar { width: 38px; height: 38px; border-radius: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--teal-soft); color: var(--teal); font-family: 'Fraunces', serif; font-weight: 600; font-size: 14px; text-decoration: none; flex-shrink: 0; }
+  .nav-avatar { width: 38px; height: 38px; border-radius: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--teal-soft); color: var(--teal); font-family: 'Fraunces', serif; font-weight: 600; font-size: 14px; text-decoration: none; flex-shrink: 0; border: none; padding: 0; cursor: pointer; }
+  .profile-wrap { position: relative; }
+  .profile-dropdown { position: absolute; top: 100%; right: 0; margin-top: 10px; width: 210px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 28px rgba(20,35,31,0.16); display: none; z-index: 50; overflow: hidden; }
+  .profile-dropdown.visible { display: block; }
+  .profile-dropdown a, .profile-dropdown .action { display: block; padding: 11px 15px; font-size: 13.5px; font-weight: 600; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .profile-dropdown a:last-child, .profile-dropdown .action:last-child { border-bottom: none; }
+  .profile-dropdown a:hover, .profile-dropdown .action:hover { background: var(--teal-soft); color: var(--teal); }
+  .profile-dropdown .logout-item { color: var(--acil); }
+  .profile-dropdown .logout-item:hover { background: var(--acil-bg); color: var(--acil); }
   .nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .nav-auth .who { color: var(--ink); font-weight: 600; }
   .nav-auth a, .nav-auth span.action { color: var(--teal-bright); font-weight: 600; text-decoration: none; cursor: pointer; }
@@ -193,11 +201,26 @@ async function initSession() {
         : `<a href="/veteriner-basvuru" style="margin-right:4px;">Veteriner misin?</a>`)
     : "";
   navAuth.innerHTML = `
+    <div class="profile-wrap" id="profile-wrap">
+      <button type="button" class="nav-avatar" id="profile-avatar-btn" title="${username}">${avatarHtml}</button>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <a href="/hesabim">Hesabım</a>
+        ${adminLink}${vetLink}<a href="/randevularim">Randevularım</a>
+        <span class="action logout-item" id="logout-action">Çıkış Yap</span>
+      </div>
+    </div>
     <div class="notif-wrap" id="notif-wrap">
       <span class="notif-bell" id="notif-bell">🔔<span class="notif-badge" id="notif-badge"></span></span>
       <div class="notif-dropdown" id="notif-dropdown"></div>
-    </div>
-    ${adminLink}${vetLink}<span class="action" id="logout-action">Çıkış yap</span><a href="/hesabim" class="nav-avatar" title="${username}">${avatarHtml}</a>`;
+    </div>`;
+  document.getElementById("profile-avatar-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("profile-dropdown").classList.toggle("visible");
+  });
+  document.addEventListener("click", () => {
+    const pd = document.getElementById("profile-dropdown");
+    if (pd) pd.classList.remove("visible");
+  });
   document.getElementById("logout-action").addEventListener("click", async () => { await supabaseClient.auth.signOut(); window.location.reload(); });
   setupNotifications();
 
