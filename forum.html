@@ -309,13 +309,16 @@ async function loadCategories() {
   const { data, error } = await supabaseClient.from("forum_kategoriler").select("*").order("id");
   if (error || !data || data.length === 0) { grid.innerHTML = '<div class="empty-state">Kategoriler yüklenemedi.</div>'; return; }
 
+  const counts = await Promise.all(
+    data.map(kat => supabaseClient.from("forum_konular").select("id", { count: "exact", head: true }).eq("kategori_id", kat.id))
+  );
+
   grid.innerHTML = "";
-  for (const kat of data) {
-    const { count } = await supabaseClient.from("forum_konular").select("id", { count: "exact", head: true }).eq("kategori_id", kat.id);
+  data.forEach((kat, i) => {
     const card = document.createElement("div");
     card.className = "category-card";
     const icon = CATEGORY_ICONS[kat.ad] || "📁";
-    const konuSayisi = count || 0;
+    const konuSayisi = counts[i].count || 0;
     card.innerHTML = `
       <div class="category-icon">${icon}</div>
       <div class="category-body">
@@ -326,7 +329,7 @@ async function loadCategories() {
     `;
     card.addEventListener("click", () => openCategory(kat.id, kat.ad));
     grid.appendChild(card);
-  }
+  });
 }
 
 async function openCategory(id, ad) {

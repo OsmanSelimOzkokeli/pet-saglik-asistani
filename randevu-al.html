@@ -253,11 +253,15 @@ async function loadVets() {
     return;
   }
 
-  const cards = [];
-  for (const vet of vets) {
-    const { data: basvuru } = await supabaseClient.from("veteriner_basvurulari").select("*").eq("kullanici_id", vet.id).eq("durum", "onaylı").order("created_at", { ascending: false }).limit(1).maybeSingle();
-    cards.push({ ...vet, basvuru });
-  }
+  const vetIds = vets.map(v => v.id);
+  const { data: basvurular } = await supabaseClient.from("veteriner_basvurulari").select("*").in("kullanici_id", vetIds).eq("durum", "onaylı").order("created_at", { ascending: false });
+
+  const basvuruByVetId = {};
+  (basvurular || []).forEach(b => {
+    if (!basvuruByVetId[b.kullanici_id]) basvuruByVetId[b.kullanici_id] = b; // en yenisi zaten en üstte
+  });
+
+  const cards = vets.map(vet => ({ ...vet, basvuru: basvuruByVetId[vet.id] || null }));
 
   renderVetList(cards);
 }

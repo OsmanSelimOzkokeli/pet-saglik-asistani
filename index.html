@@ -189,18 +189,22 @@
   }
   .bg-remove-btn.visible { display: block; }
 
-  .setup-card { padding: 26px; }
-  .setup-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
-  @media (max-width: 480px) { .setup-card .row { grid-template-columns: 1fr; gap: 12px; } }
-  .setup-card label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 7px; }
+  .setup-card {
+    align-self: flex-start; max-width: 82%; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 16px; border-bottom-left-radius: 4px; padding: 16px 18px 18px;
+  }
+  .setup-card .setup-intro { font-size: 14.5px; color: var(--ink); margin-bottom: 14px; }
+  .setup-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 480px) { .setup-card .row { grid-template-columns: 1fr; gap: 10px; } }
+  .setup-card label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
   .setup-card input {
-    width: 100%; font-family: inherit; font-size: 15px; padding: 11px 13px;
-    border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink);
+    width: 100%; font-family: inherit; font-size: 14px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink);
   }
   .setup-card input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
   .setup-card button {
-    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 10px;
-    padding: 14px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+    background: var(--teal); color: #fff; border: none; border-radius: 9px;
+    padding: 9px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer;
   }
   .setup-card button:hover { background: var(--teal-bright); }
 
@@ -331,26 +335,27 @@
     <button type="button" class="bg-customize-btn" id="bg-customize-btn" title="Sohbet arka planını özelleştir">🖼️</button>
     <input type="file" id="bg-file-input" accept="image/*" style="display:none;">
 
-    <div class="setup-card" id="setup-card">
-      <div class="row">
-        <div>
-          <label for="tur">Hayvan türü</label>
-          <input type="text" id="tur" placeholder="köpek, kedi, tavşan...">
-        </div>
-        <div>
-          <label for="yas">Yaş (opsiyonel)</label>
-          <input type="text" id="yas" placeholder="3 yaşında">
-        </div>
-      </div>
-      <button id="start-btn">Sohbete başla</button>
-    </div>
-
     <div class="gauge-bar" id="gauge-bar">
       <span class="gauge-label" id="gauge-label"></span>
       <div class="gauge-track"><div class="gauge-dot" id="gauge-dot" style="left: 0%;"></div></div>
     </div>
 
-    <div class="chat-area" id="chat-area"></div>
+    <div class="chat-area" id="chat-area">
+      <div class="setup-card" id="setup-card">
+        <div class="setup-intro">Öncelikle, hangi hayvanın için buradasın?</div>
+        <div class="row">
+          <div>
+            <label for="tur">Hayvan türü</label>
+            <input type="text" id="tur" placeholder="köpek, kedi, tavşan...">
+          </div>
+          <div>
+            <label for="yas">Yaş (opsiyonel)</label>
+            <input type="text" id="yas" placeholder="3 yaşında">
+          </div>
+        </div>
+        <button id="start-btn">Devam Et</button>
+      </div>
+    </div>
 
     <div class="error-box" id="error-box"></div>
     <div class="photo-preview" id="photo-preview"></div>
@@ -435,10 +440,24 @@ async function initSession() {
     if (profile && profile.arka_plan_url) {
       applyBackground(profile.arka_plan_url);
     }
+    renderGreeting(username);
   } else {
     el.innerHTML = `<a href="/giris">Giriş yap</a>`;
+    renderGreeting(null);
   }
 }
+
+function renderGreeting(username) {
+  const saat = new Date().getHours();
+  const zamanSelami = saat < 6 ? "İyi geceler" : saat < 12 ? "Günaydın" : saat < 18 ? "İyi günler" : "İyi akşamlar";
+  const hitap = username ? `${zamanSelami}, ${username}! 👋` : `${zamanSelami}! 👋`;
+  const div = document.createElement("div");
+  div.className = "bubble assistant fade-in";
+  div.textContent = `${hitap} Ben Pati Sağlık asistanınım. Evcil hayvanınla ilgili bir konuda mı endişelisin? Sana yardımcı olmak için buradayım.`;
+  chatArea.prepend(div);
+}
+
+
 
 function setupNotifications() {
   document.getElementById("notif-bell").addEventListener("click", async (e) => {
@@ -484,6 +503,30 @@ document.getElementById("mobile-menu-btn").addEventListener("click", () => {
 
 initSession();
 
+function compressImage(file, maxDimension, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) { height = Math.round(height * (maxDimension / width)); width = maxDimension; }
+          else { width = Math.round(width * (maxDimension / height)); height = maxDimension; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Sıkıştırma başarısız")), "image/jpeg", quality);
+      };
+      img.onerror = () => reject(new Error("Fotoğraf okunamadı"));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("Dosya okunamadı"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function applyBackground(url) {
   const shell = document.getElementById("app-shell");
   const layer = document.getElementById("app-shell-bg-layer");
@@ -504,18 +547,26 @@ document.getElementById("bg-customize-btn").addEventListener("click", () => {
 document.getElementById("bg-file-input").addEventListener("change", async () => {
   const file = document.getElementById("bg-file-input").files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    alert("Fotoğraf çok büyük (max 5MB).");
+  if (file.size > 10 * 1024 * 1024) {
+    alert("Fotoğraf çok büyük (max 10MB).");
     return;
   }
 
   const btn = document.getElementById("bg-customize-btn");
   btn.textContent = "⏳";
 
-  const uzanti = file.name.split(".").pop();
-  const dosyaYolu = `${currentUserId}/arkaplan-${Date.now()}.${uzanti}`;
+  let yuklenecekDosya;
+  try {
+    yuklenecekDosya = await compressImage(file, 1600, 0.8);
+  } catch (err) {
+    alert("Fotoğraf işlenemedi: " + err.message);
+    btn.textContent = "🖼️";
+    return;
+  }
 
-  const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, file);
+  const dosyaYolu = `${currentUserId}/arkaplan-${Date.now()}.jpg`;
+
+  const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, yuklenecekDosya);
   if (uploadError) {
     alert("Yüklenemedi: " + uploadError.message);
     btn.textContent = "🖼️";
@@ -563,31 +614,46 @@ const photoPreview = document.getElementById("photo-preview");
 
 photoBtn.addEventListener("click", () => photoInput.click());
 
-photoInput.addEventListener("change", () => {
+photoInput.addEventListener("change", async () => {
   const file = photoInput.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    alert("Fotoğraf çok büyük (max 5MB).");
+  if (file.size > 10 * 1024 * 1024) {
+    alert("Fotoğraf çok büyük (max 10MB).");
     photoInput.value = "";
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    secilenFotografBase64 = reader.result.split(",")[1];
-    photoPreview.innerHTML = `
-      <img src="${reader.result}" alt="Seçilen fotoğraf">
-      <span>Fotoğraf eklendi</span>
-      <button type="button" id="remove-photo-btn">Kaldır</button>
-    `;
-    photoPreview.classList.add("visible");
-    document.getElementById("remove-photo-btn").addEventListener("click", () => {
-      secilenFotografBase64 = null;
-      photoInput.value = "";
-      photoPreview.classList.remove("visible");
-      photoPreview.innerHTML = "";
-    });
+
+  photoBtn.disabled = true; photoBtn.textContent = "⏳";
+  let compressedBlob;
+  try {
+    compressedBlob = await compressImage(file, 1200, 0.85);
+  } catch (err) {
+    alert("Fotoğraf işlenemedi: " + err.message);
+    photoBtn.disabled = false; photoBtn.textContent = "📷";
+    photoInput.value = "";
+    return;
+  }
+  photoBtn.disabled = false; photoBtn.textContent = "📷";
+
+  const previewUrl = URL.createObjectURL(compressedBlob);
+  const base64Reader = new FileReader();
+  base64Reader.onload = () => {
+    secilenFotografBase64 = base64Reader.result.split(",")[1];
   };
-  reader.readAsDataURL(file);
+  base64Reader.readAsDataURL(compressedBlob);
+
+  photoPreview.innerHTML = `
+    <img src="${previewUrl}" alt="Seçilen fotoğraf">
+    <span>Fotoğraf eklendi</span>
+    <button type="button" id="remove-photo-btn">Kaldır</button>
+  `;
+  photoPreview.classList.add("visible");
+  document.getElementById("remove-photo-btn").addEventListener("click", () => {
+    secilenFotografBase64 = null;
+    photoInput.value = "";
+    photoPreview.classList.remove("visible");
+    photoPreview.innerHTML = "";
+  });
 });
 
 document.getElementById("start-btn").addEventListener("click", () => {
@@ -597,7 +663,7 @@ document.getElementById("start-btn").addEventListener("click", () => {
 
   setupCard.style.display = "none";
   inputBar.classList.add("visible");
-  addBubble("assistant", `Merhaba! ${tur}in için ne oldu, neyi fark ettin?`);
+  addBubble("assistant", `Anladım, ${tur}inle ilgili konuşacağız. Şimdi bana neyi fark ettiğini anlatabilirsin — semptomları yazabilir, istersen bir fotoğraf da ekleyebilirsin.`);
   messageInput.focus();
 });
 
@@ -606,7 +672,7 @@ messageInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMes
 
 function addBubble(rol, text, aciliyet) {
   const div = document.createElement("div");
-  div.className = "bubble " + (rol === "kullanici" ? "user" : "assistant");
+  div.className = "bubble fade-in " + (rol === "kullanici" ? "user" : "assistant");
   if (aciliyet === "ACİL") div.classList.add("acil");
   div.textContent = text;
   chatArea.appendChild(div);

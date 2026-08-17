@@ -335,25 +335,44 @@ async function loadQuestions() {
   if (error) { list.innerHTML = `<div class="empty-state">Yüklenemedi: ${error.message}</div>`; return; }
   if (!sorular || sorular.length === 0) { allQuestions = []; renderQuestions(); return; }
 
+  const soruIds = sorular.map(s => s.id);
   const soruSahibiIds = [...new Set(sorular.map(s => s.soru_sahibi_id))];
+
+  // Toplu sorgular: soru sahibi profilleri + tüm cevaplar aynı anda çekiliyor
+  const [soruSahipleriRes, tumCevaplarRes] = await Promise.all([
+    supabaseClient.from("kullanici_profilleri").select("id, kullanici_adi").in("id", soruSahibiIds),
+    supabaseClient.from("veteriner_cevaplari").select("*").in("soru_id", soruIds).order("created_at", { ascending: true }),
+  ]);
+
   const soruSahipleri = {};
-  for (const id of soruSahibiIds) {
-    const { data: p } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi").eq("id", id).single();
-    soruSahipleri[id] = p ? p.kullanici_adi : "Kullanıcı";
-  }
+  (soruSahipleriRes.data || []).forEach(p => { soruSahipleri[p.id] = p.kullanici_adi; });
 
-  for (const soru of sorular) {
-    const { data: cevaplar } = await supabaseClient.from("veteriner_cevaplari").select("*").eq("soru_id", soru.id).order("created_at", { ascending: true });
-    soru.cevaplar = cevaplar || [];
+  const tumCevaplar = tumCevaplarRes.data || [];
+  const vetIds = [...new Set(tumCevaplar.map(c => c.veteriner_id))];
+
+  // Cevaplayan veterinerlerin profilleri + klinik bilgileri de toplu çekiliyor
+  const [vetProfilleriRes, vetBasvurulariRes] = await Promise.all([
+    vetIds.length ? supabaseClient.from("kullanici_profilleri").select("id, kullanici_adi").in("id", vetIds) : Promise.resolve({ data: [] }),
+    vetIds.length ? supabaseClient.from("veteriner_basvurulari").select("kullanici_id, klinik_adi").in("kullanici_id", vetIds).eq("durum", "onaylı") : Promise.resolve({ data: [] }),
+  ]);
+
+  const vetAdlari = {};
+  (vetProfilleriRes.data || []).forEach(p => { vetAdlari[p.id] = p.kullanici_adi; });
+  const vetKlinikleri = {};
+  (vetBasvurulariRes.data || []).forEach(b => { vetKlinikleri[b.kullanici_id] = b.klinik_adi; });
+
+  const cevaplarBySoruId = {};
+  tumCevaplar.forEach(c => {
+    c.vet_adi = vetAdlari[c.veteriner_id] || "Veteriner";
+    c.klinik_adi = vetKlinikleri[c.veteriner_id] || null;
+    if (!cevaplarBySoruId[c.soru_id]) cevaplarBySoruId[c.soru_id] = [];
+    cevaplarBySoruId[c.soru_id].push(c);
+  });
+
+  sorular.forEach(soru => {
+    soru.cevaplar = cevaplarBySoruId[soru.id] || [];
     soru.soru_sahibi_adi = soruSahipleri[soru.soru_sahibi_id] || "Kullanıcı";
-
-    for (const cevap of soru.cevaplar) {
-      const { data: vetProfile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi").eq("id", cevap.veteriner_id).single();
-      const { data: basvuru } = await supabaseClient.from("veteriner_basvurulari").select("klinik_adi").eq("kullanici_id", cevap.veteriner_id).eq("durum", "onaylı").limit(1).maybeSingle();
-      cevap.vet_adi = vetProfile ? vetProfile.kullanici_adi : "Veteriner";
-      cevap.klinik_adi = basvuru ? basvuru.klinik_adi : null;
-    }
-  }
+  });
 
   allQuestions = sorular;
   renderQuestions();

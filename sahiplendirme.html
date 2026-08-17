@@ -307,6 +307,30 @@ const TURKISH_CITIES = [
   "Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak",
 ].sort((a, b) => a.localeCompare(b, "tr"));
 
+function compressImage(file, maxDimension, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) { height = Math.round(height * (maxDimension / width)); width = maxDimension; }
+          else { width = Math.round(width * (maxDimension / height)); height = maxDimension; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Sıkıştırma başarısız")), "image/jpeg", quality);
+      };
+      img.onerror = () => reject(new Error("Fotoğraf okunamadı"));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("Dosya okunamadı"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function setupCityAutocomplete(inputEl, listEl, onSelect) {
   function render() {
     const q = inputEl.value.trim();
@@ -495,30 +519,38 @@ function renderEkleArea() {
 
   photoUploadBtn.addEventListener("click", () => photoFileInput.click());
 
-  photoFileInput.addEventListener("change", () => {
+  photoFileInput.addEventListener("change", async () => {
     const file = photoFileInput.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Fotoğraf çok büyük (max 5MB).");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Fotoğraf çok büyük (max 10MB).");
       photoFileInput.value = "";
       return;
     }
-    secilenFotografDosyasi = file;
-    const reader = new FileReader();
-    reader.onload = () => {
-      photoPreviewThumb.innerHTML = `
-        <img src="${reader.result}" alt="Seçilen fotoğraf">
-        <button type="button" id="remove-photo-btn">Kaldır</button>
-      `;
-      photoPreviewThumb.classList.add("visible");
-      document.getElementById("remove-photo-btn").addEventListener("click", () => {
-        secilenFotografDosyasi = null;
-        photoFileInput.value = "";
-        photoPreviewThumb.classList.remove("visible");
-        photoPreviewThumb.innerHTML = "";
-      });
-    };
-    reader.readAsDataURL(file);
+
+    photoUploadBtn.disabled = true; photoUploadBtn.textContent = "İşleniyor...";
+    try {
+      secilenFotografDosyasi = await compressImage(file, 1200, 0.82);
+    } catch (err) {
+      alert("Fotoğraf işlenemedi: " + err.message);
+      photoUploadBtn.disabled = false; photoUploadBtn.textContent = "📷 Fotoğraf Seç";
+      photoFileInput.value = "";
+      return;
+    }
+    photoUploadBtn.disabled = false; photoUploadBtn.textContent = "📷 Fotoğraf Seç";
+
+    const previewUrl = URL.createObjectURL(secilenFotografDosyasi);
+    photoPreviewThumb.innerHTML = `
+      <img src="${previewUrl}" alt="Seçilen fotoğraf">
+      <button type="button" id="remove-photo-btn">Kaldır</button>
+    `;
+    photoPreviewThumb.classList.add("visible");
+    document.getElementById("remove-photo-btn").addEventListener("click", () => {
+      secilenFotografDosyasi = null;
+      photoFileInput.value = "";
+      photoPreviewThumb.classList.remove("visible");
+      photoPreviewThumb.innerHTML = "";
+    });
   });
 
   document.getElementById("submit-btn").addEventListener("click", () => submitIlan(seciliIlanTuru, secilenFotografDosyasi));
@@ -554,8 +586,7 @@ async function submitIlan(ilanTuru, fotografDosyasi) {
 
   if (fotografDosyasi) {
     btn.textContent = "Fotoğraf yükleniyor...";
-    const uzanti = fotografDosyasi.name.split(".").pop();
-    const dosyaYolu = `${currentSession.user.id}/${Date.now()}.${uzanti}`;
+    const dosyaYolu = `${currentSession.user.id}/${Date.now()}.jpg`;
 
     const { error: uploadError } = await supabaseClient.storage
       .from("ilan-fotograflari")

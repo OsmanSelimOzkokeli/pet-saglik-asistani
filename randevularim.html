@@ -268,11 +268,10 @@ async function loadRandevular() {
   }
 
   const vetIds = [...new Set(data.map(r => r.veteriner_id))];
+  const { data: basvurular } = await supabaseClient.from("veteriner_basvurulari").select("kullanici_id, klinik_adi").in("kullanici_id", vetIds).eq("durum", "onaylı");
   const vetInfoMap = {};
-  for (const vetId of vetIds) {
-    const { data: basvuru } = await supabaseClient.from("veteriner_basvurulari").select("klinik_adi").eq("kullanici_id", vetId).eq("durum", "onaylı").limit(1).maybeSingle();
-    vetInfoMap[vetId] = basvuru ? basvuru.klinik_adi : "Veteriner";
-  }
+  (basvurular || []).forEach(b => { vetInfoMap[b.kullanici_id] = b.klinik_adi; });
+  vetIds.forEach(id => { if (!vetInfoMap[id]) vetInfoMap[id] = "Veteriner"; });
 
   content.innerHTML = "";
   data.forEach(r => {
