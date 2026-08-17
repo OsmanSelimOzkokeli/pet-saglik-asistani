@@ -89,6 +89,10 @@
 
   .listing-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; gap: 16px; margin-bottom: 12px; }
   .listing-photo { width: 84px; height: 84px; border-radius: 10px; object-fit: cover; background: var(--teal-soft); flex-shrink: 0; }
+  .listing-photo-strip { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .listing-photo-strip .extra-photos { display: flex; gap: 4px; }
+  .listing-photo-strip .extra-photos img { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; border: 1px solid var(--line); }
+  .listing-photo-strip a { text-decoration: none; }
   .listing-info { flex: 1; min-width: 0; }
   .listing-name { font-weight: 600; font-size: 16px; margin-bottom: 2px; }
   .listing-meta { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 6px; }
@@ -323,9 +327,21 @@ function renderListings() {
   filtered.forEach(ilan => {
     const card = document.createElement("div");
     card.className = "listing-card";
-    const photoHtml = ilan.fotograf_url
-      ? `<img class="listing-photo" src="${ilan.fotograf_url}" alt="${ilan.hayvan_adi}">`
-      : `<div class="listing-photo"></div>`;
+    const fotograflar = (ilan.fotograflar && ilan.fotograflar.length > 0)
+      ? ilan.fotograflar
+      : (ilan.fotograf_url ? [ilan.fotograf_url] : []);
+
+    let photoHtml;
+    if (fotograflar.length === 0) {
+      photoHtml = `<div class="listing-photo"></div>`;
+    } else {
+      const digerleriHtml = fotograflar.slice(1, 5).map(url => `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt=""></a>`).join("");
+      photoHtml = `
+        <div class="listing-photo-strip">
+          <a href="${fotograflar[0]}" target="_blank" rel="noopener"><img class="listing-photo" src="${fotograflar[0]}" alt="${ilan.hayvan_adi}"></a>
+          ${fotograflar.length > 1 ? `<div class="extra-photos">${digerleriHtml}</div>` : ""}
+        </div>`;
+    }
 
     const ilanTuru = ilan.ilan_turu === "çiftleştirme" ? "💞 Çiftleştirme" : "🏠 Sahiplendirme";
 

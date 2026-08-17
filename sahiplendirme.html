@@ -127,11 +127,55 @@
     padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--teal); cursor: pointer; font-family: inherit;
   }
   .photo-upload-btn:hover { border-color: var(--teal-bright); }
-  .photo-preview-thumb { display: none; align-items: center; gap: 10px; }
-  .photo-preview-thumb.visible { display: flex; }
-  .photo-preview-thumb img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
-  .photo-preview-thumb button { background: none; border: none; color: var(--acil); font-size: 13px; cursor: pointer; font-family: inherit; padding: 8px; min-height: 32px; }
   .photo-upload-hint { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
+
+  .photo-thumb-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .photo-thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-thumb-cover-badge { position: absolute; top: 4px; left: 4px; background: var(--teal); color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 100px; }
+  .photo-thumb-controls { position: absolute; inset: 0; background: rgba(20,35,31,0.55); opacity: 0; transition: opacity 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .photo-thumb:hover .photo-thumb-controls, .photo-thumb:focus-within .photo-thumb-controls { opacity: 1; }
+  .photo-thumb-controls button {
+    width: 24px; height: 24px; border-radius: 100%; border: none; background: rgba(255,255,255,0.92);
+    color: var(--ink); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .photo-thumb-controls button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .photo-thumb-controls button.thumb-remove { color: var(--acil); }
+  @media (max-width: 600px) {
+    .photo-thumb-controls { opacity: 1; background: rgba(20,35,31,0.35); }
+  }
+
+  .listing-photo-wrap { position: relative; }
+  .listing-photo-count-badge {
+    position: absolute; bottom: 6px; right: 6px; background: rgba(20,35,31,0.72); color: #fff;
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 100px;
+  }
+
+  .lightbox-overlay {
+    position: fixed; inset: 0; background: rgba(10,18,16,0.92); z-index: 200;
+    display: none; align-items: center; justify-content: center; flex-direction: column;
+  }
+  .lightbox-overlay.visible { display: flex; }
+  .lightbox-close-btn {
+    position: absolute; top: 18px; right: 20px; background: rgba(255,255,255,0.12); border: none; color: #fff;
+    width: 40px; height: 40px; border-radius: 100%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .lightbox-close-btn:hover { background: rgba(255,255,255,0.22); }
+  .lightbox-stage { position: relative; width: 100%; max-width: 720px; display: flex; align-items: center; justify-content: center; touch-action: pan-y; }
+  .lightbox-stage img { max-width: 100%; max-height: 74vh; border-radius: 10px; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+  .lightbox-nav-btn {
+    background: rgba(255,255,255,0.14); border: none; color: #fff; width: 42px; height: 42px; border-radius: 100%;
+    font-size: 18px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  }
+  .lightbox-nav-btn:hover { background: rgba(255,255,255,0.26); }
+  .lightbox-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .lightbox-nav-btn.prev { margin-right: 14px; }
+  .lightbox-nav-btn.next { margin-left: 14px; }
+  @media (max-width: 640px) {
+    .lightbox-nav-btn { display: none; }
+    .lightbox-stage { max-width: 96vw; }
+  }
+  .lightbox-counter { color: rgba(255,255,255,0.85); font-size: 13px; font-weight: 600; margin-top: 16px; }
 
   .autocomplete-wrap { position: relative; }
   .autocomplete-list {
@@ -274,6 +318,16 @@
   <div class="panel" id="panel-ekle">
     <div id="ekle-area"></div>
   </div>
+</div>
+
+<div class="lightbox-overlay" id="lightbox-overlay">
+  <button type="button" class="lightbox-close-btn" id="lightbox-close-btn">✕</button>
+  <div class="lightbox-stage" id="lightbox-stage">
+    <button type="button" class="lightbox-nav-btn prev" id="lightbox-prev-btn">‹</button>
+    <img src="" alt="" id="lightbox-img">
+    <button type="button" class="lightbox-nav-btn next" id="lightbox-next-btn">›</button>
+  </div>
+  <div class="lightbox-counter" id="lightbox-counter"></div>
 </div>
 
 <script>
@@ -503,13 +557,13 @@ function renderEkleArea() {
       </div>
       <div class="field"><label for="aciklama">Açıklama</label><textarea id="aciklama" placeholder="Karakteri, sağlık durumu, neden sahiplendirildiği..."></textarea></div>
       <div class="field">
-        <label>Fotoğraf (opsiyonel)</label>
+        <label>Fotoğraflar (opsiyonel, en fazla 8)</label>
         <div class="photo-upload-row">
-          <button type="button" class="photo-upload-btn" id="photo-upload-btn">📷 Fotoğraf Seç</button>
-          <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
-          <div class="photo-preview-thumb" id="photo-preview-thumb"></div>
+          <button type="button" class="photo-upload-btn" id="photo-upload-btn">📷 Fotoğraf Ekle</button>
+          <input type="file" id="photo-file-input" accept="image/*" multiple style="display:none;">
         </div>
-        <div class="photo-upload-hint">JPG/PNG, max 5MB</div>
+        <div class="photo-thumb-grid" id="photo-thumb-grid"></div>
+        <div class="photo-upload-hint">JPG/PNG, her biri max 8MB. İlk fotoğraf vitrin fotoğrafı olur — sırayı oklarla değiştirebilirsin.</div>
       </div>
       <div class="row">
         <div class="field">
@@ -535,48 +589,80 @@ function renderEkleArea() {
     });
   });
 
-  let secilenFotografDosyasi = null;
+  let secilenFotograflar = []; // { blob, previewUrl } dizisi, sıra = gösterim sırası, ilk eleman vitrin
   const photoUploadBtn = document.getElementById("photo-upload-btn");
   const photoFileInput = document.getElementById("photo-file-input");
-  const photoPreviewThumb = document.getElementById("photo-preview-thumb");
+  const photoThumbGrid = document.getElementById("photo-thumb-grid");
+  const MAX_FOTOGRAF = 8;
 
   photoUploadBtn.addEventListener("click", () => photoFileInput.click());
 
   photoFileInput.addEventListener("change", async () => {
-    const file = photoFileInput.files[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      alert("Fotoğraf çok büyük (max 10MB).");
-      photoFileInput.value = "";
+    const dosyalar = Array.from(photoFileInput.files || []);
+    photoFileInput.value = "";
+    if (dosyalar.length === 0) return;
+
+    const kalanKontenjan = MAX_FOTOGRAF - secilenFotograflar.length;
+    if (kalanKontenjan <= 0) {
+      alert(`En fazla ${MAX_FOTOGRAF} fotoğraf ekleyebilirsin.`);
       return;
+    }
+    const islenecekler = dosyalar.slice(0, kalanKontenjan);
+    if (dosyalar.length > kalanKontenjan) {
+      alert(`En fazla ${MAX_FOTOGRAF} fotoğraf ekleyebilirsin, ilk ${kalanKontenjan} tanesi eklendi.`);
     }
 
     photoUploadBtn.disabled = true; photoUploadBtn.textContent = "İşleniyor...";
-    try {
-      secilenFotografDosyasi = await compressImage(file, 1200, 0.82);
-    } catch (err) {
-      alert("Fotoğraf işlenemedi: " + err.message);
-      photoUploadBtn.disabled = false; photoUploadBtn.textContent = "📷 Fotoğraf Seç";
-      photoFileInput.value = "";
-      return;
-    }
-    photoUploadBtn.disabled = false; photoUploadBtn.textContent = "📷 Fotoğraf Seç";
 
-    const previewUrl = URL.createObjectURL(secilenFotografDosyasi);
-    photoPreviewThumb.innerHTML = `
-      <img src="${previewUrl}" alt="Seçilen fotoğraf">
-      <button type="button" id="remove-photo-btn">Kaldır</button>
-    `;
-    photoPreviewThumb.classList.add("visible");
-    document.getElementById("remove-photo-btn").addEventListener("click", () => {
-      secilenFotografDosyasi = null;
-      photoFileInput.value = "";
-      photoPreviewThumb.classList.remove("visible");
-      photoPreviewThumb.innerHTML = "";
-    });
+    for (const file of islenecekler) {
+      if (file.size > 8 * 1024 * 1024) {
+        alert(`"${file.name}" çok büyük (max 8MB), atlandı.`);
+        continue;
+      }
+      try {
+        const blob = await compressImage(file, 1200, 0.82);
+        secilenFotograflar.push({ blob, previewUrl: URL.createObjectURL(blob) });
+      } catch (err) {
+        alert(`"${file.name}" işlenemedi: ${err.message}`);
+      }
+    }
+
+    photoUploadBtn.disabled = false; photoUploadBtn.textContent = "📷 Fotoğraf Ekle";
+    renderPhotoThumbGrid();
   });
 
-  document.getElementById("submit-btn").addEventListener("click", () => submitIlan(seciliIlanTuru, secilenFotografDosyasi));
+  function renderPhotoThumbGrid() {
+    photoThumbGrid.innerHTML = "";
+    secilenFotograflar.forEach((foto, idx) => {
+      const thumb = document.createElement("div");
+      thumb.className = "photo-thumb";
+      thumb.innerHTML = `
+        ${idx === 0 ? '<span class="photo-thumb-cover-badge">Vitrin</span>' : ""}
+        <img src="${foto.previewUrl}" alt="">
+        <div class="photo-thumb-controls">
+          <button type="button" class="thumb-move-left" ${idx === 0 ? "disabled" : ""} title="Sola taşı">◀</button>
+          <button type="button" class="thumb-remove" title="Kaldır">✕</button>
+          <button type="button" class="thumb-move-right" ${idx === secilenFotograflar.length - 1 ? "disabled" : ""} title="Sağa taşı">▶</button>
+        </div>
+      `;
+      thumb.querySelector(".thumb-move-left").addEventListener("click", () => {
+        [secilenFotograflar[idx - 1], secilenFotograflar[idx]] = [secilenFotograflar[idx], secilenFotograflar[idx - 1]];
+        renderPhotoThumbGrid();
+      });
+      thumb.querySelector(".thumb-move-right").addEventListener("click", () => {
+        [secilenFotograflar[idx + 1], secilenFotograflar[idx]] = [secilenFotograflar[idx], secilenFotograflar[idx + 1]];
+        renderPhotoThumbGrid();
+      });
+      thumb.querySelector(".thumb-remove").addEventListener("click", () => {
+        URL.revokeObjectURL(foto.previewUrl);
+        secilenFotograflar.splice(idx, 1);
+        renderPhotoThumbGrid();
+      });
+      photoThumbGrid.appendChild(thumb);
+    });
+  }
+
+  document.getElementById("submit-btn").addEventListener("click", () => submitIlan(seciliIlanTuru, secilenFotograflar));
 
   setupCityAutocomplete(
     document.getElementById("konum"),
@@ -584,7 +670,7 @@ function renderEkleArea() {
   );
 }
 
-async function submitIlan(ilanTuru, fotografDosyasi) {
+async function submitIlan(ilanTuru, fotograflarDizisi) {
   const hayvan_adi = document.getElementById("hayvan_adi").value.trim();
   const tur = document.getElementById("tur").value;
   const yas = document.getElementById("yas").value;
@@ -605,15 +691,15 @@ async function submitIlan(ilanTuru, fotografDosyasi) {
   btn.disabled = true;
   successBox.classList.remove("visible"); errorBox.classList.remove("visible");
 
-  let fotograf_url = null;
+  const fotografUrlleri = [];
 
-  if (fotografDosyasi) {
-    btn.textContent = "Fotoğraf yükleniyor...";
-    const dosyaYolu = `${currentSession.user.id}/${Date.now()}.jpg`;
+  for (let i = 0; i < fotograflarDizisi.length; i++) {
+    btn.textContent = `Fotoğraf yükleniyor (${i + 1}/${fotograflarDizisi.length})...`;
+    const dosyaYolu = `${currentSession.user.id}/${Date.now()}-${i}.jpg`;
 
     const { error: uploadError } = await supabaseClient.storage
       .from("ilan-fotograflari")
-      .upload(dosyaYolu, fotografDosyasi);
+      .upload(dosyaYolu, fotograflarDizisi[i].blob);
 
     if (uploadError) {
       btn.disabled = false; btn.textContent = "İlanı Gönder";
@@ -623,13 +709,15 @@ async function submitIlan(ilanTuru, fotografDosyasi) {
     }
 
     const { data: publicUrlData } = supabaseClient.storage.from("ilan-fotograflari").getPublicUrl(dosyaYolu);
-    fotograf_url = publicUrlData.publicUrl;
+    fotografUrlleri.push(publicUrlData.publicUrl);
   }
 
   btn.textContent = "Gönderiliyor...";
 
   const payload = {
-    hayvan_adi, tur, yas, cinsiyet, aciklama, fotograf_url, konum, iletisim,
+    hayvan_adi, tur, yas, cinsiyet, aciklama, konum, iletisim,
+    fotograflar: fotografUrlleri,
+    fotograf_url: fotografUrlleri[0] || null,
     ilan_sahibi_id: currentSession.user.id,
     ilan_turu: ilanTuru,
     durum: "beklemede",
@@ -644,8 +732,9 @@ async function submitIlan(ilanTuru, fotografDosyasi) {
   successBox.textContent = "İlanınız alındı, onaylandıktan sonra listede görünecek.";
   successBox.classList.add("visible");
   document.querySelectorAll("#panel-ekle input, #panel-ekle textarea, #panel-ekle select").forEach(el => el.value = "");
-  document.getElementById("photo-preview-thumb").classList.remove("visible");
-  document.getElementById("photo-preview-thumb").innerHTML = "";
+  fotograflarDizisi.forEach(f => URL.revokeObjectURL(f.previewUrl));
+  fotograflarDizisi.length = 0;
+  document.getElementById("photo-thumb-grid").innerHTML = "";
 }
 
 async function loadListings() {
@@ -697,8 +786,13 @@ function renderFilteredListings() {
   filtered.forEach(ilan => {
     const card = document.createElement("div");
     card.className = "listing-card";
-    const photoHtml = ilan.fotograf_url
-      ? `<img class="listing-photo" src="${ilan.fotograf_url}" alt="${ilan.hayvan_adi}">`
+    const fotograflar = (ilan.fotograflar && ilan.fotograflar.length > 0)
+      ? ilan.fotograflar
+      : (ilan.fotograf_url ? [ilan.fotograf_url] : []);
+    const kapakFoto = fotograflar[0];
+    const countBadgeHtml = fotograflar.length > 1 ? `<span class="listing-photo-count-badge">📷 ${fotograflar.length}</span>` : "";
+    const photoHtml = kapakFoto
+      ? `<div class="listing-photo-wrap"><img class="listing-photo" src="${kapakFoto}" alt="${ilan.hayvan_adi}">${countBadgeHtml}</div>`
       : `<div class="listing-photo"></div>`;
     const tur = ilan.ilan_turu || "sahiplendirme";
     const badgeClass = tur === "çiftleştirme" ? "ciftlestirme" : "sahiplendirme";
@@ -712,9 +806,76 @@ function renderFilteredListings() {
         <div class="listing-desc">${ilan.aciklama}</div>
         <div class="listing-contact">📞 ${ilan.iletisim}</div>
       </div>`;
+    if (fotograflar.length > 0) {
+      const photoWrapEl = card.querySelector(".listing-photo-wrap, .listing-photo");
+      photoWrapEl.style.cursor = "pointer";
+      photoWrapEl.addEventListener("click", () => openLightbox(fotograflar, 0));
+    }
     grid.appendChild(card);
   });
 }
+
+// --- Lightbox: büyütülmüş fotoğraf görünümü, ok tuşları/tıklama (masaüstü) ve kaydırma (mobil) ile gezinme ---
+let lightboxFotograflar = [];
+let lightboxIndex = 0;
+
+function openLightbox(fotograflar, baslangicIndex) {
+  lightboxFotograflar = fotograflar;
+  lightboxIndex = baslangicIndex;
+  document.getElementById("lightbox-overlay").classList.add("visible");
+  document.body.style.overflow = "hidden";
+  renderLightboxPhoto();
+}
+
+function closeLightbox() {
+  document.getElementById("lightbox-overlay").classList.remove("visible");
+  document.body.style.overflow = "";
+}
+
+function renderLightboxPhoto() {
+  document.getElementById("lightbox-img").src = lightboxFotograflar[lightboxIndex];
+  document.getElementById("lightbox-counter").textContent = lightboxFotograflar.length > 1
+    ? `${lightboxIndex + 1} / ${lightboxFotograflar.length}`
+    : "";
+  document.getElementById("lightbox-prev-btn").disabled = lightboxIndex === 0;
+  document.getElementById("lightbox-next-btn").disabled = lightboxIndex === lightboxFotograflar.length - 1;
+}
+
+function lightboxPrev() {
+  if (lightboxIndex > 0) { lightboxIndex--; renderLightboxPhoto(); }
+}
+function lightboxNext() {
+  if (lightboxIndex < lightboxFotograflar.length - 1) { lightboxIndex++; renderLightboxPhoto(); }
+}
+
+document.getElementById("lightbox-close-btn").addEventListener("click", closeLightbox);
+document.getElementById("lightbox-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "lightbox-overlay") closeLightbox();
+});
+document.getElementById("lightbox-prev-btn").addEventListener("click", lightboxPrev);
+document.getElementById("lightbox-next-btn").addEventListener("click", lightboxNext);
+
+document.addEventListener("keydown", (e) => {
+  if (!document.getElementById("lightbox-overlay").classList.contains("visible")) return;
+  if (e.key === "Escape") closeLightbox();
+  if (e.key === "ArrowLeft") lightboxPrev();
+  if (e.key === "ArrowRight") lightboxNext();
+});
+
+// Mobil: kaydırarak (swipe) fotoğraflar arası geçiş
+let lightboxTouchStartX = null;
+const lightboxStage = document.getElementById("lightbox-stage");
+lightboxStage.addEventListener("touchstart", (e) => {
+  lightboxTouchStartX = e.touches[0].clientX;
+}, { passive: true });
+lightboxStage.addEventListener("touchend", (e) => {
+  if (lightboxTouchStartX === null) return;
+  const delta = e.changedTouches[0].clientX - lightboxTouchStartX;
+  if (Math.abs(delta) > 40) {
+    if (delta > 0) lightboxPrev(); else lightboxNext();
+  }
+  lightboxTouchStartX = null;
+});
 
 document.querySelectorAll("#filter-ilan-turu .filter-chip").forEach(chip => {
   chip.addEventListener("click", () => {
