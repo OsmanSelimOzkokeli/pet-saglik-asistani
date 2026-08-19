@@ -172,7 +172,7 @@
   .app-shell {
     display: flex; flex-direction: column;
     background: var(--card); border: 1px solid var(--line); border-radius: 18px;
-    padding: 6px; min-height: 480px; position: relative; overflow: hidden;
+    padding: 6px; position: relative; overflow: hidden; min-height: 520px;
   }
   .app-shell.has-bg .chat-area { background: rgba(255, 255, 255, 0.86); }
   .app-shell-bg-layer {
@@ -182,39 +182,29 @@
   .app-shell.has-bg .app-shell-bg-layer { opacity: 1; }
   .app-shell > *:not(.app-shell-bg-layer) { position: relative; z-index: 1; }
 
-  .bg-customize-btn {
-    position: absolute; top: 14px; right: 14px; z-index: 5;
-    background: rgba(255,255,255,0.92); border: 1px solid var(--line); border-radius: 10px;
-    width: 36px; height: 36px; font-size: 16px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+  .pre-chat-state { max-width: 620px; margin: 0 auto; padding: 8px 4px 40px; text-align: center; }
+  .pre-chat-greeting {
+    font-family: 'Fraunces', serif; font-size: 21px; font-weight: 500; color: var(--ink);
+    line-height: 1.5; margin-bottom: 26px;
   }
-  .bg-customize-btn:hover { border-color: var(--teal-bright); }
-  .bg-remove-btn {
-    position: absolute; top: 14px; right: 58px; z-index: 5;
-    background: rgba(255,255,255,0.92); border: 1px solid var(--line); border-radius: 10px;
-    padding: 0 12px; height: 36px; font-size: 12px; font-weight: 600; color: var(--acil);
-    cursor: pointer; display: none;
+  .pre-chat-form {
+    text-align: left; background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 22px 24px 24px; box-shadow: 0 4px 18px rgba(20,35,31,0.05);
   }
-  .bg-remove-btn.visible { display: block; }
-
-  .setup-card {
-    align-self: flex-start; max-width: 82%; background: var(--paper); border: 1px solid var(--line);
-    border-radius: 16px; border-bottom-left-radius: 4px; padding: 16px 18px 18px;
+  .pre-chat-form .setup-intro { font-size: 14.5px; font-weight: 600; color: var(--ink); margin-bottom: 16px; }
+  .pre-chat-form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  @media (max-width: 480px) { .pre-chat-form .row { grid-template-columns: 1fr; gap: 12px; } }
+  .pre-chat-form label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+  .pre-chat-form input {
+    width: 100%; font-family: inherit; font-size: 14.5px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink);
   }
-  .setup-card .setup-intro { font-size: 14.5px; color: var(--ink); margin-bottom: 14px; }
-  .setup-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-  @media (max-width: 480px) { .setup-card .row { grid-template-columns: 1fr; gap: 10px; } }
-  .setup-card label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
-  .setup-card input {
-    width: 100%; font-family: inherit; font-size: 14px; padding: 9px 11px;
-    border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink);
+  .pre-chat-form input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
+  .pre-chat-form button {
+    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 10px;
+    padding: 12px; font-size: 14.5px; font-weight: 600; font-family: inherit; cursor: pointer;
   }
-  .setup-card input:focus { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
-  .setup-card button {
-    background: var(--teal); color: #fff; border: none; border-radius: 9px;
-    padding: 9px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer;
-  }
-  .setup-card button:hover { background: var(--teal-bright); }
+  .pre-chat-form button:hover { background: var(--teal-bright); }
 
   .chat-area { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px 20px 8px; max-height: 480px; }
 
@@ -337,33 +327,33 @@
 </div>
 
 <div class="main">
-  <div class="app-shell" id="app-shell">
+  <div class="pre-chat-state" id="pre-chat-state">
+    <div class="pre-chat-greeting" id="pre-chat-greeting"></div>
+    <div class="pre-chat-form">
+      <div class="setup-intro">Öncelikle, hangi hayvanın için buradasın?</div>
+      <div class="row">
+        <div>
+          <label for="tur">Hayvan türü</label>
+          <input type="text" id="tur" placeholder="köpek, kedi, tavşan...">
+        </div>
+        <div>
+          <label for="yas">Yaş (opsiyonel)</label>
+          <input type="text" id="yas" placeholder="3 yaşında">
+        </div>
+      </div>
+      <button id="start-btn">Devam Et</button>
+    </div>
+  </div>
+
+  <div class="app-shell" id="app-shell" style="display:none;">
     <div class="app-shell-bg-layer" id="app-shell-bg-layer"></div>
-    <button type="button" class="bg-remove-btn" id="bg-remove-btn" title="Arka planı kaldır">Kaldır</button>
-    <button type="button" class="bg-customize-btn" id="bg-customize-btn" title="Sohbet arka planını özelleştir">🖼️</button>
-    <input type="file" id="bg-file-input" accept="image/*" style="display:none;">
 
     <div class="gauge-bar" id="gauge-bar">
       <span class="gauge-label" id="gauge-label"></span>
       <div class="gauge-track"><div class="gauge-dot" id="gauge-dot" style="left: 0%;"></div></div>
     </div>
 
-    <div class="chat-area" id="chat-area">
-      <div class="setup-card" id="setup-card">
-        <div class="setup-intro">Öncelikle, hangi hayvanın için buradasın?</div>
-        <div class="row">
-          <div>
-            <label for="tur">Hayvan türü</label>
-            <input type="text" id="tur" placeholder="köpek, kedi, tavşan...">
-          </div>
-          <div>
-            <label for="yas">Yaş (opsiyonel)</label>
-            <input type="text" id="yas" placeholder="3 yaşında">
-          </div>
-        </div>
-        <button id="start-btn">Devam Et</button>
-      </div>
-    </div>
+    <div class="chat-area" id="chat-area"></div>
 
     <div class="error-box" id="error-box"></div>
     <div class="photo-preview" id="photo-preview"></div>
@@ -474,10 +464,7 @@ function renderGreeting(username) {
   const saat = new Date().getHours();
   const zamanSelami = saat < 6 ? "İyi geceler" : saat < 12 ? "Günaydın" : saat < 18 ? "İyi günler" : "İyi akşamlar";
   const hitap = username ? `${zamanSelami}, ${username}! 👋` : `${zamanSelami}! 👋`;
-  const div = document.createElement("div");
-  div.className = "bubble assistant fade-in";
-  div.textContent = `${hitap} Ben Pati Sağlık asistanınım. Evcil hayvanınla ilgili bir konuda mı endişelisin? Sana yardımcı olmak için buradayım.`;
-  chatArea.prepend(div);
+  document.getElementById("pre-chat-greeting").textContent = `${hitap} Ben Pati Sağlık asistanınım. Evcil hayvanınla ilgili bir konuda mı endişelisin? Sana yardımcı olmak için buradayım.`;
 }
 
 
@@ -555,63 +542,7 @@ function applyBackground(url) {
   const layer = document.getElementById("app-shell-bg-layer");
   layer.style.backgroundImage = `url('${url}')`;
   shell.classList.add("has-bg");
-  document.getElementById("bg-remove-btn").classList.add("visible");
 }
-
-document.getElementById("bg-customize-btn").addEventListener("click", () => {
-  if (!currentUserId) {
-    alert("Sohbet arka planını özelleştirmek için giriş yapman gerekiyor.");
-    window.location.href = "/giris";
-    return;
-  }
-  document.getElementById("bg-file-input").click();
-});
-
-document.getElementById("bg-file-input").addEventListener("change", async () => {
-  const file = document.getElementById("bg-file-input").files[0];
-  if (!file) return;
-  if (file.size > 10 * 1024 * 1024) {
-    alert("Fotoğraf çok büyük (max 10MB).");
-    return;
-  }
-
-  const btn = document.getElementById("bg-customize-btn");
-  btn.textContent = "⏳";
-
-  let yuklenecekDosya;
-  try {
-    yuklenecekDosya = await compressImage(file, 1600, 0.8);
-  } catch (err) {
-    alert("Fotoğraf işlenemedi: " + err.message);
-    btn.textContent = "🖼️";
-    return;
-  }
-
-  const dosyaYolu = `${currentUserId}/arkaplan-${Date.now()}.jpg`;
-
-  const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, yuklenecekDosya);
-  if (uploadError) {
-    alert("Yüklenemedi: " + uploadError.message);
-    btn.textContent = "🖼️";
-    return;
-  }
-
-  const { data: publicUrlData } = supabaseClient.storage.from("ilan-fotograflari").getPublicUrl(dosyaYolu);
-  const url = publicUrlData.publicUrl;
-
-  await supabaseClient.from("kullanici_profilleri").update({ arka_plan_url: url }).eq("id", currentUserId);
-
-  applyBackground(url);
-  btn.textContent = "🖼️";
-});
-
-document.getElementById("bg-remove-btn").addEventListener("click", async () => {
-  if (!currentUserId) return;
-  await supabaseClient.from("kullanici_profilleri").update({ arka_plan_url: null }).eq("id", currentUserId);
-  document.getElementById("app-shell").classList.remove("has-bg");
-  document.getElementById("bg-remove-btn").classList.remove("visible");
-  document.getElementById("app-shell-bg-layer").style.backgroundImage = "";
-});
 
 const urgencyConfig = {
   "ACİL":         { pct: 92,  label: "ACİL",           color: "var(--acil)",     bg: "var(--acil-bg)" },
@@ -622,7 +553,8 @@ const urgencyConfig = {
 
 let tur = "", yas = "", gecmis = [], secilenFotografBase64 = null;
 
-const setupCard = document.getElementById("setup-card");
+const preChatState = document.getElementById("pre-chat-state");
+const appShell = document.getElementById("app-shell");
 const chatArea = document.getElementById("chat-area");
 const inputBar = document.getElementById("input-bar");
 const messageInput = document.getElementById("message-input");
@@ -684,7 +616,8 @@ document.getElementById("start-btn").addEventListener("click", () => {
   yas = document.getElementById("yas").value.trim();
   if (!tur) { alert("Lütfen hayvan türünü yaz (köpek, kedi, vb.)"); return; }
 
-  setupCard.style.display = "none";
+  preChatState.style.display = "none";
+  appShell.style.display = "flex";
   inputBar.classList.add("visible");
   addBubble("assistant", `Anladım, ${tur}inle ilgili konuşacağız. Şimdi bana neyi fark ettiğini anlatabilirsin — semptomları yazabilir, istersen bir fotoğraf da ekleyebilirsin.`);
   messageInput.focus();

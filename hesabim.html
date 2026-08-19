@@ -88,6 +88,10 @@
   .avatar-circle { width: 52px; height: 52px; border-radius: 100%; background: var(--teal-soft); color: var(--teal); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; flex-shrink: 0; overflow: hidden; position: relative; }
   .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
   .avatar-actions { display: flex; flex-direction: column; gap: 12px; }
+
+  .bg-preview-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .bg-preview-box { width: 90px; height: 68px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); background-size: cover; background-position: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-faint); font-size: 11px; text-align: center; }
+  .bg-preview-actions { display: flex; flex-direction: column; gap: 8px; }
   .avatar-action-btn { font-size: 12px; font-weight: 600; color: var(--teal-bright); cursor: pointer; background: none; border: none; font-family: inherit; padding: 6px 2px; text-align: left; min-height: 32px; }
   .avatar-action-btn.danger { color: var(--acil); }
 
@@ -219,7 +223,7 @@ async function initSession() {
   currentUserId = session.user.id;
   currentUserEmail = session.user.email;
 
-  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner, profil_foto_url, kullanici_adi_degisim_tarihi, sehir, bio, hayvanlarim").eq("id", session.user.id).single();
+  const { data: profile } = await supabaseClient.from("kullanici_profilleri").select("kullanici_adi, admin, veteriner, profil_foto_url, kullanici_adi_degisim_tarihi, sehir, bio, hayvanlarim, arka_plan_url").eq("id", session.user.id).single();
   const username = profile ? profile.kullanici_adi : session.user.email;
     const avatarHtml = profile && profile.profil_foto_url
       ? `<img src="${profile.profil_foto_url}" alt="">`
@@ -390,6 +394,20 @@ async function renderContent(profile, session) {
     </div>
 
     <div class="section-card">
+      <div class="section-title">Sohbet arka planı</div>
+      <div class="section-desc">Evcil hayvanının fotoğrafını, sohbet asistanı sayfasının arka planı yap.</div>
+      <div class="bg-preview-row">
+        <div class="bg-preview-box" id="bg-preview-box">Arka plan yok</div>
+        <div class="bg-preview-actions">
+          <button class="avatar-action-btn" id="bg-upload-btn">Fotoğraf seç</button>
+          <button class="avatar-action-btn danger" id="bg-remove-btn-settings" style="display:none;">Kaldır</button>
+        </div>
+        <input type="file" id="bg-file-input-settings" accept="image/*" style="display:none;">
+      </div>
+      <div class="msg-box" id="bg-msg-box"></div>
+    </div>
+
+    <div class="section-card">
       <div class="section-title">E-posta</div>
       <div class="section-desc">E-postanı değiştirmek istersen yeni adresine bir onay maili göndeririz.</div>
       <div class="field">
@@ -456,6 +474,75 @@ async function renderContent(profile, session) {
   currentHayvanlarim = (profile && profile.hayvanlarim) ? profile.hayvanlarim : [];
   renderPetList();
   document.getElementById("pet-add-btn").addEventListener("click", addPet);
+
+  initBgSettings(profile);
+}
+
+function initBgSettings(profile) {
+  const previewBox = document.getElementById("bg-preview-box");
+  const removeBtn = document.getElementById("bg-remove-btn-settings");
+
+  function refreshPreview(url) {
+    if (url) {
+      previewBox.style.backgroundImage = `url('${url}')`;
+      previewBox.textContent = "";
+      removeBtn.style.display = "inline-block";
+    } else {
+      previewBox.style.backgroundImage = "";
+      previewBox.textContent = "Arka plan yok";
+      removeBtn.style.display = "none";
+    }
+  }
+  refreshPreview(profile && profile.arka_plan_url);
+
+  document.getElementById("bg-upload-btn").addEventListener("click", () => document.getElementById("bg-file-input-settings").click());
+
+  document.getElementById("bg-file-input-settings").addEventListener("change", async () => {
+    const file = document.getElementById("bg-file-input-settings").files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Fotoğraf çok büyük (max 10MB).");
+      return;
+    }
+
+    const msgBox = document.getElementById("bg-msg-box");
+    msgBox.classList.remove("visible", "success", "error");
+    const uploadBtn = document.getElementById("bg-upload-btn");
+    uploadBtn.disabled = true; uploadBtn.textContent = "İşleniyor...";
+
+    let compressed;
+    try {
+      compressed = await compressImage(file, 1600, 0.8);
+    } catch (err) {
+      msgBox.textContent = "Fotoğraf işlenemedi: " + err.message;
+      msgBox.classList.add("visible", "error");
+      uploadBtn.disabled = false; uploadBtn.textContent = "Fotoğraf seç";
+      return;
+    }
+
+    const dosyaYolu = `${currentUserId}/arkaplan-${Date.now()}.jpg`;
+    const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, compressed);
+
+    uploadBtn.disabled = false; uploadBtn.textContent = "Fotoğraf seç";
+
+    if (uploadError) {
+      msgBox.textContent = "Yüklenemedi: " + uploadError.message;
+      msgBox.classList.add("visible", "error");
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage.from("ilan-fotograflari").getPublicUrl(dosyaYolu);
+    await supabaseClient.from("kullanici_profilleri").update({ arka_plan_url: publicUrlData.publicUrl }).eq("id", currentUserId);
+
+    refreshPreview(publicUrlData.publicUrl);
+    msgBox.textContent = "Sohbet arka planın güncellendi.";
+    msgBox.classList.add("visible", "success");
+  });
+
+  removeBtn.addEventListener("click", async () => {
+    await supabaseClient.from("kullanici_profilleri").update({ arka_plan_url: null }).eq("id", currentUserId);
+    refreshPreview(null);
+  });
 }
 
 let currentHayvanlarim = [];
