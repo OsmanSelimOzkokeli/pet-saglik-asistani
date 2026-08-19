@@ -492,6 +492,17 @@ function updateSubmitState() {
   }
 }
 
+async function metinUygunMu(metin) {
+  try {
+    const res = await fetch("/api/metin-kontrol", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metin }),
+    });
+    const data = await res.json();
+    return data.uygun !== false;
+  } catch (e) { return true; }
+}
+
 async function submitRandevu() {
   if (!currentUserId) {
     alert("Randevu talep etmek için giriş yapman gerekiyor.");
@@ -510,7 +521,18 @@ async function submitRandevu() {
   }
 
   const btn = document.getElementById("randevu-submit-btn");
-  btn.disabled = true; btn.textContent = "Gönderiliyor...";
+  btn.disabled = true; btn.textContent = "Kontrol ediliyor...";
+
+  const uygun = await metinUygunMu(sebep);
+  if (!uygun) {
+    btn.disabled = false;
+    updateSubmitState();
+    msgBox.textContent = "Metinde uygunsuz içerik tespit edildi.";
+    msgBox.classList.add("visible", "error");
+    return;
+  }
+
+  btn.textContent = "Gönderiliyor...";
 
   const { error } = await supabaseClient.from("randevular").insert({
     kullanici_id: currentUserId,

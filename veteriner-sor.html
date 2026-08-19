@@ -512,6 +512,7 @@ function renderQuestions() {
             <div class="comment-item">
               <div class="comment-author">${y.yorumcu_adi}</div>
               <div class="comment-text">${y.yorum}</div>
+              <span class="report-yorum-link" data-id="${y.id}" style="font-size:10.5px;color:var(--ink-faint);cursor:pointer;">🚩 Şikayet et</span>
             </div>
           `).join("");
           const yorumFormHtml = currentUserId ? `
@@ -524,7 +525,7 @@ function renderQuestions() {
             <div class="answer-card">
               <div class="answer-vet">🩺 Bir veteriner</div>
               <div class="answer-content">${c.cevap}</div>
-              <div class="answer-time">${new Date(c.created_at).toLocaleDateString("tr-TR")}</div>
+              <div class="answer-time">${new Date(c.created_at).toLocaleDateString("tr-TR")} · <span class="report-cevap-link" data-id="${c.id}" style="cursor:pointer;">🚩 Şikayet et</span></div>
               <div class="comment-section">
                 ${c.yorumlar && c.yorumlar.length > 0 ? `<div class="comment-list">${yorumlarHtml}</div>` : ""}
                 ${yorumFormHtml}
@@ -571,6 +572,12 @@ function renderQuestions() {
   }
   list.querySelectorAll(".report-question-link").forEach(link => {
     link.addEventListener("click", () => raporla("veteriner_soru", link.dataset.id, link.dataset.baslik));
+  });
+  list.querySelectorAll(".report-cevap-link").forEach(link => {
+    link.addEventListener("click", (e) => { e.stopPropagation(); raporla("veteriner_cevap", link.dataset.id, "Veteriner cevabı"); });
+  });
+  list.querySelectorAll(".report-yorum-link").forEach(link => {
+    link.addEventListener("click", () => raporla("veteriner_yorum", link.dataset.id, "Cevap yorumu"));
   });
 }
 

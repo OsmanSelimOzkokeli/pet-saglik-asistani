@@ -520,6 +520,16 @@ function initBgSettings(profile) {
       return;
     }
 
+    uploadBtn.textContent = "Kontrol ediliyor...";
+    const uygun = await fotoUygunMu(compressed);
+    if (!uygun) {
+      uploadBtn.disabled = false; uploadBtn.textContent = "Fotoğraf seç";
+      msgBox.textContent = "Bu fotoğraf uygunsuz bulundu, lütfen farklı bir fotoğraf seç.";
+      msgBox.classList.add("visible", "error");
+      return;
+    }
+
+    uploadBtn.textContent = "Yükleniyor...";
     const dosyaYolu = `${currentUserId}/arkaplan-${Date.now()}.jpg`;
     const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, compressed);
 
@@ -601,6 +611,34 @@ async function savePetList() {
   await supabaseClient.from("kullanici_profilleri").update({ hayvanlarim: currentHayvanlarim }).eq("id", currentUserId);
 }
 
+async function metinUygunMu(metin) {
+  try {
+    const res = await fetch("/api/metin-kontrol", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metin }),
+    });
+    const data = await res.json();
+    return data.uygun !== false;
+  } catch (e) { return true; }
+}
+
+async function fotoUygunMu(blob) {
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    const res = await fetch("/api/foto-kontrol", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ foto_base64: base64 }),
+    });
+    const data = await res.json();
+    return data.uygun !== false;
+  } catch (e) { return true; }
+}
+
 async function saveProfilBilgileri() {
   const sehir = document.getElementById("profil-sehir").value.trim() || null;
   const bio = document.getElementById("profil-bio").value.trim() || null;
@@ -608,8 +646,19 @@ async function saveProfilBilgileri() {
   msgBox.classList.remove("visible", "success", "error");
 
   const btn = document.getElementById("profil-bilgi-save-btn");
-  btn.disabled = true; btn.textContent = "Kaydediliyor...";
+  btn.disabled = true; btn.textContent = "Kontrol ediliyor...";
 
+  if (bio) {
+    const uygun = await metinUygunMu(bio);
+    if (!uygun) {
+      btn.disabled = false; btn.textContent = "Kaydet";
+      msgBox.textContent = "Hakkımda metninde uygunsuz içerik tespit edildi.";
+      msgBox.classList.add("visible", "error");
+      return;
+    }
+  }
+
+  btn.textContent = "Kaydediliyor...";
   const { error } = await supabaseClient.from("kullanici_profilleri").update({ sehir, bio }).eq("id", currentUserId);
 
   btn.disabled = false; btn.textContent = "Kaydet";
@@ -702,6 +751,15 @@ async function uploadAvatar() {
     return;
   }
 
+  uploadBtn.textContent = "Kontrol ediliyor...";
+  const uygun = await fotoUygunMu(compressed);
+  if (!uygun) {
+    uploadBtn.disabled = false; uploadBtn.textContent = "Fotoğraf değiştir";
+    alert("Bu fotoğraf uygunsuz bulundu, lütfen farklı bir fotoğraf seç.");
+    return;
+  }
+
+  uploadBtn.textContent = "Yükleniyor...";
   const dosyaYolu = `${currentUserId}/profil-${Date.now()}.jpg`;
 
   const { error: uploadError } = await supabaseClient.storage.from("ilan-fotograflari").upload(dosyaYolu, compressed);

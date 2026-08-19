@@ -539,8 +539,11 @@ async function loadComments() {
     card.className = "comment-card";
     const yazan = yorum.kullanici_profilleri ? yorum.kullanici_profilleri.kullanici_adi : "bilinmiyor";
     const tarih = new Date(yorum.created_at).toLocaleDateString("tr-TR");
-    card.innerHTML = `<div class="comment-meta"><a href="/profil/${yorum.yazan_id}" style="color:inherit;text-decoration:none;">${yazan}</a> · ${tarih}</div><div class="comment-body">${yorum.icerik}</div>`;
+    card.innerHTML = `<div class="comment-meta"><a href="/profil/${yorum.yazan_id}" style="color:inherit;text-decoration:none;">${yazan}</a> · ${tarih}</div><div class="comment-body">${yorum.icerik}</div><div style="margin-top:6px;"><span class="report-comment-link" data-id="${yorum.id}" style="font-size:11px;color:var(--ink-faint);cursor:pointer;">🚩 Şikayet et</span></div>`;
     list.appendChild(card);
+  });
+  list.querySelectorAll(".report-comment-link").forEach(link => {
+    link.addEventListener("click", () => raporla("forum_yorum", link.dataset.id, "Forum yorumu"));
   });
 }
 
