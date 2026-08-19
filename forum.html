@@ -439,6 +439,38 @@ function showNewTopicForm() {
   document.getElementById("submit-new-topic").addEventListener("click", submitNewTopic);
 }
 
+async function metinUygunMu(metin) {
+  try {
+    const res = await fetch("/api/metin-kontrol", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metin }),
+    });
+    const data = await res.json();
+    return data.uygun !== false;
+  } catch (e) { return true; }
+}
+
+async function raporla(icerikTuru, icerikId, icerikOzeti) {
+  if (!currentSession) {
+    alert("Şikayet edebilmek için giriş yapman gerekiyor.");
+    window.location.href = "/giris";
+    return;
+  }
+  const aciklama = prompt("Bu içeriği neden şikayet ediyorsun? (opsiyonel)");
+  if (aciklama === null) return;
+
+  const { error } = await supabaseClient.from("icerik_sikayetleri").insert({
+    raporlayan_id: currentSession.user.id,
+    icerik_turu: icerikTuru,
+    icerik_id: icerikId,
+    icerik_ozeti: icerikOzeti,
+    aciklama: aciklama || null,
+  });
+
+  if (error) { alert("Şikayet gönderilemedi: " + error.message); return; }
+  alert("Şikayetin alındı, incelenecek.");
+}
+
 async function submitNewTopic() {
   const baslik = document.getElementById("new-topic-baslik").value.trim();
   const icerik = document.getElementById("new-topic-icerik").value.trim();
@@ -446,7 +478,17 @@ async function submitNewTopic() {
   if (!baslik || !icerik) { errBox.textContent = "Başlık ve içerik boş olamaz."; errBox.classList.add("visible"); return; }
 
   const btn = document.getElementById("submit-new-topic");
-  btn.disabled = true; btn.textContent = "Paylaşılıyor...";
+  btn.disabled = true; btn.textContent = "Kontrol ediliyor...";
+
+  const uygun = await metinUygunMu(`${baslik} ${icerik}`);
+  if (!uygun) {
+    btn.disabled = false; btn.textContent = "Konuyu Paylaş";
+    errBox.textContent = "Metinde uygunsuz içerik tespit edildi, lütfen gözden geçir.";
+    errBox.classList.add("visible");
+    return;
+  }
+
+  btn.textContent = "Paylaşılıyor...";
   const { error } = await supabaseClient.from("forum_konular").insert({ kategori_id: currentCategoryId, yazan_id: currentSession.user.id, baslik, icerik });
   btn.disabled = false; btn.textContent = "Konuyu Paylaş";
 
@@ -480,7 +522,8 @@ async function openTopic(id) {
   if (error || !konu) { detailCard.innerHTML = '<div class="empty-state">Konu yüklenemedi.</div>'; return; }
   const yazan = konu.kullanici_profilleri ? konu.kullanici_profilleri.kullanici_adi : "bilinmiyor";
   const tarih = new Date(konu.created_at).toLocaleDateString("tr-TR");
-  detailCard.innerHTML = `<div class="topic-detail-title">${konu.baslik}</div><div class="topic-detail-meta"><a href="/profil/${konu.yazan_id}" style="color:inherit;text-decoration:none;">${yazan}</a> · ${tarih}</div><div class="topic-detail-body">${konu.icerik}</div>`;
+  detailCard.innerHTML = `<div class="topic-detail-title">${konu.baslik}</div><div class="topic-detail-meta"><a href="/profil/${konu.yazan_id}" style="color:inherit;text-decoration:none;">${yazan}</a> · ${tarih}</div><div class="topic-detail-body">${konu.icerik}</div><div style="margin-top:10px;"><span id="topic-report-link" style="font-size:12px;color:var(--ink-faint);cursor:pointer;">🚩 Şikayet et</span></div>`;
+  document.getElementById("topic-report-link").addEventListener("click", () => raporla("forum_konu", id, konu.baslik));
   await loadComments();
   renderCommentForm();
 }
@@ -519,7 +562,17 @@ async function submitComment() {
   if (!icerik) { errBox.textContent = "Yorum boş olamaz."; errBox.classList.add("visible"); return; }
 
   const btn = document.getElementById("submit-comment");
-  btn.disabled = true; btn.textContent = "Gönderiliyor...";
+  btn.disabled = true; btn.textContent = "Kontrol ediliyor...";
+
+  const uygun = await metinUygunMu(icerik);
+  if (!uygun) {
+    btn.disabled = false; btn.textContent = "Yorum Yap";
+    errBox.textContent = "Yorumda uygunsuz içerik tespit edildi.";
+    errBox.classList.add("visible");
+    return;
+  }
+
+  btn.textContent = "Gönderiliyor...";
   const { error } = await supabaseClient.from("forum_yorumlar").insert({ konu_id: currentTopicId, yazan_id: currentSession.user.id, icerik });
   btn.disabled = false; btn.textContent = "Yorum Yap";
 

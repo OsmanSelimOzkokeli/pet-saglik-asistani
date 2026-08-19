@@ -408,6 +408,7 @@
           <a class="ilan-detay-call-btn" id="ilan-detay-call-btn">📞 Hemen Ara</a>
           <a class="ilan-detay-whatsapp-btn" id="ilan-detay-whatsapp-btn" target="_blank" rel="noopener">💬 WhatsApp'tan Yaz</a>
           <div class="ilan-detay-date" id="ilan-detay-date"></div>
+          <div style="text-align:center;margin-top:10px;"><span id="ilan-detay-report-link" style="font-size:12px;color:var(--ink-faint);cursor:pointer;">🚩 Bu ilanı şikayet et</span></div>
         </div>
       </div>
     </div>
@@ -768,6 +769,34 @@ function renderEkleArea() {
   );
 }
 
+async function metinUygunMu(metin) {
+  try {
+    const res = await fetch("/api/metin-kontrol", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metin }),
+    });
+    const data = await res.json();
+    return data.uygun !== false;
+  } catch (e) { return true; }
+}
+
+async function fotoUygunMu(blob) {
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    const res = await fetch("/api/foto-kontrol", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ foto_base64: base64 }),
+    });
+    const data = await res.json();
+    return data.uygun !== false;
+  } catch (e) { return true; }
+}
+
 async function submitIlan(ilanTuru, fotograflarDizisi) {
   const hayvan_adi = document.getElementById("hayvan_adi").value.trim();
   const tur = document.getElementById("tur").value;
@@ -788,6 +817,26 @@ async function submitIlan(ilanTuru, fotograflarDizisi) {
 
   btn.disabled = true;
   successBox.classList.remove("visible"); errorBox.classList.remove("visible");
+
+  btn.textContent = "İçerik kontrol ediliyor...";
+  const metinUygun = await metinUygunMu(`${hayvan_adi} ${aciklama}`);
+  if (!metinUygun) {
+    btn.disabled = false; btn.textContent = "İlanı Gönder";
+    errorBox.textContent = "İlan metninde uygunsuz içerik tespit edildi. Lütfen açıklamanı gözden geçir.";
+    errorBox.classList.add("visible");
+    return;
+  }
+
+  for (let i = 0; i < fotograflarDizisi.length; i++) {
+    btn.textContent = `Fotoğraf kontrol ediliyor (${i + 1}/${fotograflarDizisi.length})...`;
+    const uygun = await fotoUygunMu(fotograflarDizisi[i].blob);
+    if (!uygun) {
+      btn.disabled = false; btn.textContent = "İlanı Gönder";
+      errorBox.textContent = `${i + 1}. fotoğraf uygunsuz bulundu, lütfen farklı bir fotoğraf seç.`;
+      errorBox.classList.add("visible");
+      return;
+    }
+  }
 
   const fotografUrlleri = [];
 
@@ -923,6 +972,27 @@ function buildWhatsAppLink(iletisim) {
   return `https://wa.me/${intl}`;
 }
 
+async function raporla(icerikTuru, icerikId, icerikOzeti) {
+  if (!currentSession) {
+    alert("Şikayet edebilmek için giriş yapman gerekiyor.");
+    window.location.href = "/giris";
+    return;
+  }
+  const aciklama = prompt("Bu içeriği neden şikayet ediyorsun? (opsiyonel)");
+  if (aciklama === null) return; // vazgeçti
+
+  const { error } = await supabaseClient.from("icerik_sikayetleri").insert({
+    raporlayan_id: currentSession.user.id,
+    icerik_turu: icerikTuru,
+    icerik_id: icerikId,
+    icerik_ozeti: icerikOzeti,
+    aciklama: aciklama || null,
+  });
+
+  if (error) { alert("Şikayet gönderilemedi: " + error.message); return; }
+  alert("Şikayetin alındı, incelenecek.");
+}
+
 function openIlanDetay(ilan, fotograflar) {
   ilanDetayFotograflari = fotograflar;
   ilanDetayIndex = 0;
@@ -990,6 +1060,10 @@ function openIlanDetay(ilan, fotograflar) {
   document.getElementById("listing-grid").style.display = "none";
   document.getElementById("panel-ilan-detay").style.display = "block";
   window.scrollTo({ top: 0, behavior: "smooth" });
+
+  document.getElementById("ilan-detay-report-link").onclick = () => {
+    raporla("sahiplendirme_ilan", ilan.id, `${ilan.hayvan_adi} · ${ilan.tur}`);
+  };
 }
 
 function closeIlanDetay() {

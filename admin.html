@@ -100,6 +100,7 @@
   .listing-contact { font-size: 12.5px; color: var(--teal); font-weight: 600; margin-bottom: 10px; }
 
   .status-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; margin-bottom: 8px; }
+  .status-badge.incelendi { background: var(--green-soft); color: #3F5A22; }
   .status-badge.beklemede { background: var(--yakinda-bg); color: var(--yakinda); }
   .status-badge.onaylı { background: var(--green-soft); color: #3F5A22; }
   .status-badge.reddedildi { background: var(--acil-bg); color: var(--acil); }
@@ -156,6 +157,7 @@
   <div class="section-tabs" id="section-tabs">
     <button class="section-tab-btn active" data-section="ilanlar">🐾 İlanlar</button>
     <button class="section-tab-btn" data-section="veterinerler">🩺 Veteriner Başvuruları</button>
+    <button class="section-tab-btn" data-section="sikayetler">🚩 Şikayetler</button>
   </div>
 
   <div id="content">
@@ -230,7 +232,8 @@ async function initSession() {
       document.querySelectorAll("#section-tabs .section-tab-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       if (btn.dataset.section === "ilanlar") loadListings();
-      else loadVetApplications();
+      else if (btn.dataset.section === "veterinerler") loadVetApplications();
+      else loadSikayetler();
     });
   });
 
@@ -478,6 +481,110 @@ async function updateVetApplication(id, kullaniciId, yeniDurum, btnEl) {
   const item = allVetApplications.find(b => b.id === id);
   if (item) item.durum = yeniDurum;
   renderVetApplications();
+}
+
+let allSikayetler = [];
+let activeSikayetTab = "bekliyor";
+
+async function loadSikayetler() {
+  const content = document.getElementById("content");
+  content.innerHTML = `
+    <div class="tabs" id="sikayet-tabs" style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="tab-btn active" data-val="bekliyor">Bekleyen</button>
+      <button class="tab-btn" data-val="incelendi">İncelenen</button>
+      <button class="tab-btn" data-val="reddedildi">Reddedilen</button>
+      <button class="tab-btn" data-val="tumu">Tümü</button>
+    </div>
+    <div id="sikayet-list"><div class="empty-state"><div class="spinner"></div></div></div>
+  `;
+
+  document.querySelectorAll("#sikayet-tabs .tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#sikayet-tabs .tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeSikayetTab = btn.dataset.val;
+      renderSikayetler();
+    });
+  });
+
+  const { data, error } = await supabaseClient.from("icerik_sikayetleri").select("*").order("created_at", { ascending: false });
+
+  if (error) {
+    document.getElementById("sikayet-list").innerHTML = `<div class="empty-state">Yüklenemedi: ${error.message}</div>`;
+    return;
+  }
+
+  const raporlayanIds = [...new Set((data || []).map(s => s.raporlayan_id))];
+  const { data: profiller } = raporlayanIds.length
+    ? await supabaseClient.from("kullanici_profilleri").select("id, kullanici_adi").in("id", raporlayanIds)
+    : { data: [] };
+  const raporlayanAdlari = {};
+  (profiller || []).forEach(p => { raporlayanAdlari[p.id] = p.kullanici_adi; });
+  (data || []).forEach(s => { s.raporlayan_adi = raporlayanAdlari[s.raporlayan_id] || "Kullanıcı"; });
+
+  allSikayetler = data || [];
+  renderSikayetler();
+}
+
+const ICERIK_TURU_ETIKETLERI = {
+  sahiplendirme_ilan: "🐾 Sahiplendirme İlanı",
+  forum_konu: "💬 Forum Konusu",
+  veteriner_soru: "🩺 Veterinere Sor Sorusu",
+};
+
+function renderSikayetler() {
+  const list = document.getElementById("sikayet-list");
+  const filtered = activeSikayetTab === "tumu" ? allSikayetler : allSikayetler.filter(s => s.durum === activeSikayetTab);
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-state">Bu kategoride şikayet yok.</div>';
+    return;
+  }
+
+  list.innerHTML = "";
+  filtered.forEach(s => {
+    const card = document.createElement("div");
+    card.className = "listing-card";
+    const actionsHtml = s.durum === "bekliyor" ? `
+      <div class="action-row">
+        <button class="action-btn approve-btn" data-id="${s.id}" data-action="incelendi">İncelendi olarak işaretle</button>
+        <button class="action-btn reject-btn" data-id="${s.id}" data-action="reddedildi">Reddet</button>
+      </div>
+    ` : "";
+    card.innerHTML = `
+      <div class="listing-info">
+        <span class="status-badge ${s.durum}">${s.durum}</span>
+        <div class="listing-name">${ICERIK_TURU_ETIKETLERI[s.icerik_turu] || s.icerik_turu}</div>
+        <div class="info-line"><strong>İçerik:</strong> ${s.icerik_ozeti || "—"}</div>
+        <div class="info-line"><strong>Raporlayan:</strong> ${s.raporlayan_adi}</div>
+        ${s.aciklama ? `<div class="info-line"><strong>Açıklama:</strong> ${s.aciklama}</div>` : ""}
+        <div class="info-line" style="color:var(--ink-faint);">${new Date(s.created_at).toLocaleString("tr-TR")}</div>
+        ${actionsHtml}
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  list.querySelectorAll(".action-btn").forEach(btn => {
+    btn.addEventListener("click", () => updateSikayetDurumu(btn.dataset.id, btn.dataset.action, btn));
+  });
+}
+
+async function updateSikayetDurumu(id, yeniDurum, btnEl) {
+  const card = btnEl.closest(".listing-card");
+  card.querySelectorAll(".action-btn").forEach(b => b.disabled = true);
+
+  const { error } = await supabaseClient.from("icerik_sikayetleri").update({ durum: yeniDurum }).eq("id", id);
+
+  if (error) {
+    alert("Güncellenemedi: " + error.message);
+    card.querySelectorAll(".action-btn").forEach(b => b.disabled = false);
+    return;
+  }
+
+  const item = allSikayetler.find(s => s.id === id);
+  if (item) item.durum = yeniDurum;
+  renderSikayetler();
 }
 
 document.getElementById("mobile-menu-panel").innerHTML = document.querySelector(".nav-links").innerHTML;

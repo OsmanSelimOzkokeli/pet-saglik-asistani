@@ -19,6 +19,8 @@ zorlanır. AI, bu tür durumlarda aciliyeti düşürecek şekilde konuşamaz.
 import base64
 import json
 import os
+import re
+import urllib.request
 from enum import Enum
 from typing import Optional
 
@@ -382,7 +384,6 @@ def call_google_places(req: NearbyRequest) -> dict:
     if not api_key:
         raise HTTPException(status_code=500, detail="GOOGLE_PLACES_API_KEY tanımlı değil")
 
-    import urllib.request
     import urllib.parse
 
     query = f"{req.tur} {req.konum}"
@@ -533,7 +534,6 @@ def supabase_url() -> str:
 
 @app.post("/sahiplendirme")
 def sahiplendirme_ekle(ilan: SahiplendirmeIlan):
-    import urllib.request
     import urllib.error
 
     endpoint = f"{supabase_url()}/rest/v1/sahiplendirme_ilanlari"
@@ -555,7 +555,6 @@ def sahiplendirme_ekle(ilan: SahiplendirmeIlan):
 
 @app.get("/sahiplendirme")
 def sahiplendirme_listele():
-    import urllib.request
     import urllib.error
     import urllib.parse
 
@@ -681,8 +680,8 @@ def profil_sayfa(kullanici_id: str):
     if os.path.exists(html_path):
         return FileResponse(html_path)
     return {"status": "hata", "mesaj": "profil.html bulunamadı"}
-    
-        
+
+
 @app.get("/forum")
 def forum_sayfa():
     html_path = os.path.join(os.path.dirname(__file__), "forum.html")
@@ -890,3 +889,100 @@ async def hesap_sil(request: Request):
             return JSONResponse({"status": "hata", "mesaj": f"Silme başarısız: {delete_res.text}"}, status_code=500)
 
     return {"status": "basarili"}
+
+
+# ---------------------------------------------------------------------------
+# Aşama 6: İçerik moderasyonu (uygunsuz metin + fotoğraf tespiti)
+# ---------------------------------------------------------------------------
+
+def _yasakli_kelimeleri_yukle():
+    path = os.path.join(os.path.dirname(__file__), "yasakli_kelimeler.txt")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [satir.strip().lower() for satir in f if satir.strip() and not satir.startswith("#")]
+
+
+YASAKLI_KELIMELER = _yasakli_kelimeleri_yukle()
+
+
+def _metni_sadelestir(metin: str) -> str:
+    """Küçük harfe çevirir, harf/rakam dışındaki her şeyi siler.
+    Bu, 'a.m.k' veya 'a m k' gibi basit kaçırma denemelerini de yakalar."""
+    metin = metin.lower()
+    return re.sub(r"[^a-zçğıöşü0-9]", "", metin)
+
+
+def yasakli_kelime_var_mi(metin: str):
+    sade = _metni_sadelestir(metin)
+    for kelime in YASAKLI_KELIMELER:
+        sade_kelime = _metni_sadelestir(kelime)
+        if sade_kelime and sade_kelime in sade:
+            return kelime
+    return None
+
+
+def openai_moderasyon_cagir(payload_input):
+    """OpenAI'nin ücretsiz /v1/moderations endpoint'ini çağırır.
+    Hem metin hem görsel input kabul eder. Hata olursa None döner
+    (yani moderasyon atlanır, kullanıcı deneyimi bozulmaz)."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    try:
+        body = json.dumps({"model": "omni-moderation-latest", "input": payload_input}).encode()
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/moderations",
+            data=body,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=15) as response:
+            return json.loads(response.read())
+    except Exception as e:
+        print("OpenAI moderasyon çağrısı hatası:", e)
+        return None
+
+
+class MetinKontrolRequest(BaseModel):
+    metin: str
+
+
+class FotoKontrolRequest(BaseModel):
+    foto_base64: str
+
+
+@app.post("/api/metin-kontrol")
+def metin_kontrol(req: MetinKontrolRequest):
+    eslesen = yasakli_kelime_var_mi(req.metin)
+    if eslesen:
+        return {"uygun": False, "sebep": "yasakli_kelime"}
+
+    if os.environ.get("MOCK_MODE") == "1":
+        return {"uygun": True, "sebep": None}
+
+    sonuc = openai_moderasyon_cagir(req.metin)
+    if sonuc and sonuc.get("results"):
+        r = sonuc["results"][0]
+        if r.get("flagged"):
+            kategoriler = [k for k, v in r.get("categories", {}).items() if v]
+            return {"uygun": False, "sebep": "ai_moderasyon", "kategoriler": kategoriler}
+
+    return {"uygun": True, "sebep": None}
+
+
+@app.post("/api/foto-kontrol")
+def foto_kontrol(req: FotoKontrolRequest):
+    if os.environ.get("MOCK_MODE") == "1":
+        return {"uygun": True, "sebep": None}
+
+    sonuc = openai_moderasyon_cagir([
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{req.foto_base64}"}}
+    ])
+    if sonuc and sonuc.get("results"):
+        r = sonuc["results"][0]
+        if r.get("flagged"):
+            kategoriler = [k for k, v in r.get("categories", {}).items() if v]
+            return {"uygun": False, "sebep": "ai_moderasyon", "kategoriler": kategoriler}
+
+    return {"uygun": True, "sebep": None}

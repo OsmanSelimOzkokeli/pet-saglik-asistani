@@ -1,0 +1,24 @@
+# Yasaklı kelimeler listesi — her satıra bir kelime.
+# Bu, küçük bir başlangıç listesidir. Daha kapsamlı bir liste için
+# GitHub'da "türkçe küfür listesi" / "turkish bad words list" arayıp
+# bulduğun listeyi buraya (her satıra bir kelime olacak şekilde) ekleyebilirsin.
+# '#' ile başlayan satırlar yorum sayılır, dikkate alınmaz.
+
+amk
+aq
+orospu
+piç
+yavşak
+siktir
+göt herif
+ibne
+puşt
+kahpe
+şerefsiz
+gerizekalı
+mal herif
+salak
+aptal herif
+angut
+dallama
+şalgam kafa
